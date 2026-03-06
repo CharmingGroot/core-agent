@@ -1,0 +1,17 @@
+apiVersion: v2
+name: chamelion
+description: >
+  Chamelion — Adaptive AI Agent Orchestration Platform.
+  Multi-LLM, multi-domain agent harness with governance, RBAC, and sLLM optimization.
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+keywords:
+  - ai-agent
+  - llm
+  - orchestration
+  - governance
+  - vllm
+  - ollama
+maintainers:
+  - name: CharmingGroot

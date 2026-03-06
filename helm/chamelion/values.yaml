@@ -1,0 +1,162 @@
+# ──────────────────────────────────────────────────────
+# Chamelion — Helm Values
+# ──────────────────────────────────────────────────────
+
+# ─── Policy Mode ──────────────────────────────────────
+policy:
+  # standalone: OpenPolicy (no DB, all allowed)
+  # governed: GovernedPolicy (DB-backed RBAC, audit)
+  mode: standalone
+
+# ─── Database (governed 모드에서만 사용) ───────────────
+database:
+  # postgres | mysql | mariadb | mongodb
+  type: postgres
+  host: governance-db
+  port: 5432
+  name: chamelion
+  user: chamelion
+  password: changeme
+  ssl: false
+  # MongoDB 전용
+  uri: ""
+
+# ─── Orchestrator ─────────────────────────────────────
+orchestrator:
+  enabled: true
+  replicas: 1
+  image:
+    repository: chamelion/orchestrator
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  provider:
+    id: openai
+    model: gpt-4o
+    baseUrl: ""
+    auth:
+      type: api-key
+      apiKey: ""
+  # 컨텍스트 버짓 프리셋: SLLM_32K | LLM_128K | LLM_200K
+  contextBudget: LLM_128K
+
+# ─── Governance Service ───────────────────────────────
+governance:
+  enabled: false
+  replicas: 1
+  image:
+    repository: chamelion/governance
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ─── Sub-Agents (도메인별 에이전트) ───────────────────
+agents:
+  # 각 에이전트는 독립 Deployment로 배포
+  - name: code-review
+    enabled: true
+    replicas: 1
+    skill: code-review
+    image:
+      repository: chamelion/agent
+      tag: latest
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    provider:
+      id: vllm
+      model: meta-llama/Llama-3.1-70B-Instruct
+      baseUrl: http://vllm-svc:8000/v1
+      auth:
+        type: no-auth
+    contextBudget: SLLM_32K
+
+  - name: deploy
+    enabled: true
+    replicas: 1
+    skill: deploy
+    image:
+      repository: chamelion/agent
+      tag: latest
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    provider:
+      id: vllm
+      model: meta-llama/Llama-3.1-8B-Instruct
+      baseUrl: http://vllm-svc:8000/v1
+      auth:
+        type: no-auth
+    contextBudget: SLLM_32K
+
+# ─── vLLM Service (선택적) ────────────────────────────
+vllm:
+  enabled: false
+  replicas: 1
+  image:
+    repository: vllm/vllm-openai
+    tag: latest
+  model: meta-llama/Llama-3.1-70B-Instruct
+  gpu:
+    count: 1
+    type: nvidia.com/gpu
+  resources:
+    requests:
+      cpu: 4000m
+      memory: 32Gi
+    limits:
+      cpu: 8000m
+      memory: 64Gi
+
+# ─── Skills/Rules 볼륨 ────────────────────────────────
+skills:
+  # ConfigMap으로 주입할 .skill.md 파일 경로
+  configMapName: chamelion-skills
+  mountPath: /app/skills
+
+rules:
+  configMapName: chamelion-rules
+  mountPath: /app/rules
+
+# ─── 공통 설정 ────────────────────────────────────────
+global:
+  namespace: chamelion
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ─── Ingress ──────────────────────────────────────────
+ingress:
+  enabled: false
+  className: nginx
+  host: chamelion.local
+  tls: false
+
+# ─── ServiceAccount ───────────────────────────────────
+serviceAccount:
+  create: true
+  name: chamelion
+  annotations: {}

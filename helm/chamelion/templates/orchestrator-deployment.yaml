@@ -1,0 +1,135 @@
+{{- if .Values.orchestrator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-orchestrator
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "chamelion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orchestrator
+spec:
+  replicas: {{ .Values.orchestrator.replicas }}
+  selector:
+    matchLabels:
+      {{- include "chamelion.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: orchestrator
+  template:
+    metadata:
+      labels:
+        {{- include "chamelion.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: orchestrator
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: orchestrator
+          image: "{{ .Values.orchestrator.image.repository }}:{{ .Values.orchestrator.image.tag }}"
+          imagePullPolicy: {{ .Values.orchestrator.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: POLICY_MODE
+              value: {{ .Values.policy.mode | quote }}
+            - name: PROVIDER_ID
+              value: {{ .Values.orchestrator.provider.id | quote }}
+            - name: PROVIDER_MODEL
+              value: {{ .Values.orchestrator.provider.model | quote }}
+            {{- if .Values.orchestrator.provider.baseUrl }}
+            - name: PROVIDER_BASE_URL
+              value: {{ .Values.orchestrator.provider.baseUrl | quote }}
+            {{- end }}
+            - name: AUTH_TYPE
+              value: {{ .Values.orchestrator.provider.auth.type | quote }}
+            {{- if .Values.orchestrator.provider.auth.apiKey }}
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: orchestrator-api-key
+            {{- end }}
+            - name: CONTEXT_BUDGET
+              value: {{ .Values.orchestrator.contextBudget | quote }}
+            {{- if eq .Values.policy.mode "governed" }}
+            - name: GOVERNANCE_URL
+              value: "http://{{ .Release.Name }}-governance:3001"
+            - name: DB_TYPE
+              value: {{ .Values.database.type | quote }}
+            - name: DB_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: DB_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: DB_USER
+              value: {{ .Values.database.user | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: db-password
+            {{- end }}
+            - name: SKILLS_DIR
+              value: {{ .Values.skills.mountPath | quote }}
+            - name: RULES_DIR
+              value: {{ .Values.rules.mountPath | quote }}
+          volumeMounts:
+            - name: skills
+              mountPath: {{ .Values.skills.mountPath }}
+              readOnly: true
+            - name: rules
+              mountPath: {{ .Values.rules.mountPath }}
+              readOnly: true
+          resources:
+            {{- toYaml .Values.orchestrator.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: skills
+          configMap:
+            name: {{ .Values.skills.configMapName }}
+        - name: rules
+          configMap:
+            name: {{ .Values.rules.configMapName }}
+      {{- with .Values.global.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-orchestrator
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "chamelion.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orchestrator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "chamelion.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: orchestrator
+{{- end }}
