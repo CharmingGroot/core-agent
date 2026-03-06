@@ -5,3 +5,15 @@ export { FileSearchTool } from './file-search.js';
 export { ShellExecTool } from './shell-exec.js';
 export { createToolRegistry } from './tool-registry.js';
 export { ReflectTool, type SkillProvider, type SkillGuidelines } from './reflect.js';
+export {
+  McpClient,
+  McpManager,
+  McpToolProxy,
+  StdioTransport,
+  SseTransport,
+  type IMcpTransport,
+  type McpServerConfig,
+  type McpConnectionState,
+  type McpToolDefinition,
+  type McpServerStatus,
+} from './mcp/index.js';

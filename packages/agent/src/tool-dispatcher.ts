@@ -51,17 +51,17 @@ export class ToolDispatcher {
       };
     }
 
+    let result: ToolResult;
     try {
-      const result = await tool.execute(params, context);
-      context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result });
-      return result;
+      result = await tool.execute(params, context);
     } catch (error) {
       if (error instanceof PermissionDeniedError) throw error;
       const message = error instanceof Error ? error.message : String(error);
-      const result: ToolResult = { success: false, output: '', error: message };
-      context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result });
-      return result;
+      result = { success: false, output: '', error: message };
     }
+
+    context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result });
+    return result;
   }
 
   async dispatchAll(

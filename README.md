@@ -21,14 +21,24 @@ OpenAI 호환 서버든. 런타임에 슬래시 커맨드 하나로 프로바이
 코드 실행은 Docker 샌드박스에서 격리된다. 같은 코드베이스, 같은 패키지,
 어떤 환경이든.
 
+### 도구 종속 없음
+
+내장 도구(file, shell)는 시작 시 등록되고, **MCP 외부 도구**는 런타임에
+동적으로 연결/해제된다. stdio와 SSE 트랜스포트 모두 지원.
+재시작 없이 MCP 서버를 추가하면 도구가 자동으로 발견되어 등록된다.
+
 ### 거버넌스 종속 없음
 
 `IPolicyProvider` 패턴으로 정책과 로직을 분리한다:
 
-- **OpenPolicy** -- 스탠드얼론 모드, 제로 설정, 데이터베이스 불필요.
-  몇 분 만에 에이전트를 배포할 수 있다.
-- **GovernedPolicy** -- 엔터프라이즈 RBAC + 멀티 DB 지원 (PostgreSQL,
-  MySQL/MariaDB, MongoDB). 전체 감사 추적, 팀 관리, 승인 워크플로우.
+| 모드 | 프로필 | 도구 접근 | 승인 |
+|------|--------|----------|------|
+| **Standalone** | 없음 (OpenPolicy) | 모든 도구 허용 | 없음 |
+| **Governed** | 관리자 할당 | 프로필 기반 필터링 | 프로필 정책에 따라 |
+
+- **Standalone** -- 개인 개발자용. 제로 설정, DB 불필요. 몇 분 만에 배포.
+- **Governed** -- 팀/조직용. 프로필로 도구 접근 제어, 엔터프라이즈 RBAC,
+  멀티 DB (PostgreSQL, MySQL/MariaDB, MongoDB), 감사 추적, 승인 워크플로우.
 
 거버넌스 요구사항이 바뀌어도 에이전트 코드는 바뀌지 않는다.
 
@@ -57,7 +67,7 @@ Layer 1: @cli-agent/* (에이전트 런타임)
 |---------|------|
 | `core` | 타입, Registry, EventBus, RunContext, Config (zod), Logger, Errors |
 | `providers` | LLM 래퍼 (Claude, OpenAI, vLLM, Ollama, Custom) + 인증 리졸버 |
-| `tools` | 파일/셸 도구 (file_read, file_write, file_search, shell_exec) |
+| `tools` | 내장 도구 + MCP 클라이언트 (stdio/SSE), 성찰 도구 |
 | `sandbox` | Docker 기반 코드 격리 실행 (JS, TS, Python, Bash) |
 | `agent` | 에이전트 루프 엔진 -- LLM <-> Tool 디스패치 사이클 |
 | `cli` / `ui` | 터미널 REPL (Commander + Chalk) 및 Electron 데스크톱 UI |
@@ -66,13 +76,86 @@ Layer 1: @cli-agent/* (에이전트 런타임)
 
 | 패키지 | 역할 |
 |---------|------|
-| `types` | 공유 타입 + `IPolicyProvider` 인터페이스 |
-| `context-engine` | 토큰 버짓 추적, 히스토리 압축, 스킬 범위 도구 필터링 (sLLM 32k 최적화) |
+| `types` | 공유 타입 + `IPolicyProvider` + Profile 정의 |
+| `context-engine` | 토큰 버짓 추적, 히스토리 압축, 스킬/프로필 기반 도구 필터링 |
 | `skill` | 스킬 정의, 로딩, 레지스트리 |
-| `rule` | 조건부 로직 및 게이팅용 룰 엔진 |
-| `orchestrator` | 파이프라인 실행 엔진 |
+| `rule` | 룰 엔진 (내장 룰 + 거버넌스 전용 룰) |
+| `orchestrator` | DAG 기반 병렬 파이프라인 실행 엔진 |
 | `governance` | RBAC, 감사, 멀티 DB (OpenPolicy / GovernedPolicy) |
-| `harness` | 도메인 조합 루트 -- 스킬, 룰, 에이전트, 정책을 조립 |
+| `harness` | 도메인 조합 루트 -- 프로필, 스킬, 룰, 에이전트, 정책을 조립 |
+
+---
+
+## 도구 시스템
+
+### 내장 도구
+
+앱 시작 시 자동 등록:
+
+| 도구 | 설명 |
+|------|------|
+| `file_read` | 파일 읽기 |
+| `file_write` | 파일 쓰기/수정 |
+| `file_search` | 파일 검색 (glob 패턴) |
+| `shell_exec` | 셸 명령 실행 |
+| `reflect` | 스킬 지침 대비 자기 성찰 |
+
+각 도구에는 `.skill.md` 가이드라인이 포함되어 있어 LLM의 도구 사용 품질을 높인다.
+
+### MCP 외부 도구
+
+런타임에 MCP 서버를 연결하면 도구가 자동 발견/등록된다:
+
+```typescript
+// stdio 트랜스포트 (자식 프로세스)
+await mcpManager.connect({
+  name: 'github',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-github'],
+});
+
+// SSE 트랜스포트 (HTTP)
+await mcpManager.connect({
+  name: 'database',
+  transport: 'sse',
+  url: 'http://localhost:3001',
+});
+
+// 런타임 해제 (재시작 불필요)
+await mcpManager.disconnect('github');
+```
+
+MCP 도구는 `서버명__도구명` 형식으로 Registry에 등록된다 (예: `github__create_issue`).
+
+---
+
+## 프로필 기반 접근 제어
+
+Governed 모드에서 관리자가 프로필을 정의하고 사용자에게 할당한다.
+프로필은 LLM에 전달되는 도구 자체를 필터링하므로, 차단된 도구는
+LLM에게 보이지도 않는다.
+
+```
+Profile "backend-dev"
+  ├── allowedTools: ["file_*", "shell_exec", "github__*"]
+  ├── deniedTools: ["github__delete_repo"]
+  ├── approvalRequired: ["shell_exec"]
+  └── allowedSkills: ["code-edit", "code-review"]
+
+Profile "data-analyst"
+  ├── allowedTools: ["file_read", "file_search", "db__*"]
+  ├── deniedTools: ["db__drop_table"]
+  └── approvalRequired: ["db__query"]
+```
+
+적용 시점:
+
+```
+Harness → 프로필 로드 → 도구 필터링 → LLM에 허용된 도구만 전달
+```
+
+Standalone 모드에서는 프로필 없이 모든 도구가 허용된다.
 
 ---
 
@@ -83,7 +166,9 @@ Layer 1: @cli-agent/* (에이전트 런타임)
 - **Event-Driven** -- 모듈은 `EventBus`로 통신; 렌더러는 이벤트를 구독.
 - **Native Function Calling** -- LLM 네이티브 `tool_use` 사용, 텍스트 파싱 ReAct 체인 아님.
 - **Agent-as-Tool** -- 에이전트가 다른 에이전트를 도구로 호출하여 계층적 태스크 분해 가능.
-- **IPolicyProvider** -- 거버넌스는 주입, 하드코딩 아님. 에이전트 코드 수정 없이 OpenPolicy를 GovernedPolicy로 교체.
+- **IPolicyProvider** -- 거버넌스는 주입, 하드코딩 아님. OpenPolicy → GovernedPolicy 교체 시 에이전트 코드 수정 없음.
+- **Profile** -- Governed 모드에서 도구 접근을 앞단에서 필터링. LLM이 못 쓰는 도구를 호출하려고 토큰 낭비하지 않음.
+- **MCP** -- 외부 도구 서버를 런타임에 연결/해제. stdio + SSE 트랜스포트 지원.
 
 ---
 
@@ -143,21 +228,22 @@ chamelion/
 ├── packages/                # Layer 1: @cli-agent/*
 │   ├── core/                #   타입, Registry, EventBus, Config
 │   ├── providers/           #   LLM 프로바이더 (Claude, OpenAI, vLLM, ...)
-│   ├── tools/               #   파일/셸 도구
+│   ├── tools/               #   내장 도구 + MCP 클라이언트
 │   ├── sandbox/             #   Docker 샌드박스
 │   ├── agent/               #   에이전트 루프 엔진
 │   ├── cli/                 #   터미널 REPL
 │   └── ui/                  #   Electron 데스크톱 UI
 │
 ├── core-packages/           # Layer 2: @core/*
-│   ├── types/               #   공유 타입 + IPolicyProvider
-│   ├── context-engine/      #   런타임 컨텍스트
+│   ├── types/               #   공유 타입 + IPolicyProvider + Profile
+│   ├── context-engine/      #   토큰 버짓 + 도구 필터링
 │   ├── skill/               #   스킬 레지스트리
 │   ├── rule/                #   룰 엔진
 │   ├── orchestrator/        #   파이프라인 실행
 │   ├── governance/          #   RBAC + 감사
 │   └── harness/             #   도메인 조합 하네스
 │
+├── skills/                  # 내장 스킬 가이드라인 (.skill.md)
 ├── helm/chamelion/          # Kubernetes Helm 차트
 ├── docs/                    # 문서
 ├── package.json             # 루트 (pnpm 워크스페이스)
@@ -174,8 +260,9 @@ chamelion/
 | 언어 | TypeScript 5.4+ (strict 모드) |
 | 런타임 | Node.js 18+ |
 | 패키지 관리 | pnpm 워크스페이스 (모노레포) |
-| 테스트 | Vitest -- **14개 패키지, 533개 테스트** |
+| 테스트 | Vitest |
 | LLM SDK | @anthropic-ai/sdk, openai |
+| 외부 도구 | MCP (stdio + SSE) |
 | CLI | Commander, Chalk |
 | 설정 검증 | Zod (판별 유니온) |
 | 로깅 | Pino |

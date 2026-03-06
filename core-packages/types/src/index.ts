@@ -71,6 +71,14 @@ export type {
   PendingApproval,
 } from './governance.js';
 
+// Profile
+export type {
+  Profile,
+  ProfilePolicy,
+  ToolAccessDecision,
+} from './profile.js';
+export { OPEN_PROFILE_ID } from './profile.js';
+
 // Harness
 export type {
   DomainConfig,
