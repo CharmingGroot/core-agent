@@ -174,7 +174,7 @@ chamelion/
 | 언어 | TypeScript 5.4+ (strict 모드) |
 | 런타임 | Node.js 18+ |
 | 패키지 관리 | pnpm 워크스페이스 (모노레포) |
-| 테스트 | Vitest -- **14개 패키지, 473개 테스트** |
+| 테스트 | Vitest -- **14개 패키지, 533개 테스트** |
 | LLM SDK | @anthropic-ai/sdk, openai |
 | CLI | Commander, Chalk |
 | 설정 검증 | Zod (판별 유니온) |
