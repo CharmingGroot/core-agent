@@ -15,6 +15,13 @@ beforeEach(() => {
       onAgentResponse: vi.fn(() => vi.fn()),
       onAgentError: vi.fn(() => vi.fn()),
       onConfigValue: vi.fn(() => vi.fn()),
+      govGetState: vi.fn(),
+      govSetMode: vi.fn(),
+      govAddDomain: vi.fn(),
+      govRemoveDomain: vi.fn(),
+      govToggleRule: vi.fn(),
+      govClearAudit: vi.fn(),
+      onGovState: vi.fn(() => vi.fn()),
     },
   };
 });
@@ -22,12 +29,12 @@ beforeEach(() => {
 describe('App', () => {
   it('should render the app shell', () => {
     const html = renderToString(<App />);
-    expect(html).toContain('CLI Agent');
+    expect(html).toContain('Chamelion');
   });
 
   it('should show welcome screen when no API key', () => {
     const html = renderToString(<App />);
-    expect(html).toContain('Welcome to CLI Agent');
+    expect(html).toContain('Welcome to Chamelion');
     expect(html).toContain('Open Settings');
   });
 
@@ -39,6 +46,11 @@ describe('App', () => {
   it('should render clear button', () => {
     const html = renderToString(<App />);
     expect(html).toContain('Clear');
+  });
+
+  it('should render governance button', () => {
+    const html = renderToString(<App />);
+    expect(html).toContain('Governance');
   });
 
   it('should render logo', () => {

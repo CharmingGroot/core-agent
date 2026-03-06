@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import type { AppConfig, AppView } from '../types.js';
 import { ChatPanel } from './ChatPanel.js';
 import { SettingsPanel } from './SettingsPanel.js';
+import { GovernancePanel } from './governance/GovernancePanel.js';
 import { useAgent } from '../hooks/useAgent.js';
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -31,7 +32,7 @@ export function App(): React.ReactElement {
       <div style={styles.titleBar}>
         <div style={styles.titleLeft}>
           <span style={styles.logo}>{'>'}_</span>
-          <span style={styles.titleText}>CLI Agent</span>
+          <span style={styles.titleText}>Chamelion</span>
         </div>
         <div style={styles.titleRight}>
           {hasConfig && (
@@ -47,16 +48,27 @@ export function App(): React.ReactElement {
             Clear
           </button>
           <button
-            onClick={() => setView(view === 'chat' ? 'settings' : 'chat')}
+            onClick={() => setView(view === 'governance' ? 'chat' : 'governance')}
+            style={{
+              ...styles.titleButton,
+              ...(view === 'governance' ? { color: '#a78bfa', borderColor: '#7c3aed' } : {}),
+            }}
+          >
+            Governance
+          </button>
+          <button
+            onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
             style={styles.titleButton}
           >
-            {view === 'chat' ? 'Settings' : 'Chat'}
+            {view === 'chat' || view === 'governance' ? 'Settings' : 'Chat'}
           </button>
         </div>
       </div>
 
       <div style={styles.content}>
-        {view === 'settings' ? (
+        {view === 'governance' ? (
+          <GovernancePanel onBack={() => setView('chat')} />
+        ) : view === 'settings' ? (
           <SettingsPanel
             config={config}
             onSave={handleSaveConfig}
@@ -65,7 +77,7 @@ export function App(): React.ReactElement {
         ) : !hasConfig ? (
           <div style={styles.noConfig}>
             <div style={styles.noConfigIcon}>{'>'}_</div>
-            <div style={styles.noConfigTitle}>Welcome to CLI Agent</div>
+            <div style={styles.noConfigTitle}>Welcome to Chamelion</div>
             <div style={styles.noConfigText}>
               Configure your API key to get started
             </div>

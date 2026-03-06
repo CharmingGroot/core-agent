@@ -31,4 +31,45 @@ export interface AppConfig {
   workingDirectory: string;
 }
 
-export type AppView = 'chat' | 'settings';
+export type AppView = 'chat' | 'settings' | 'governance';
+export type GovernanceTab = 'domains' | 'skills' | 'audit';
+
+export type PolicyMode = 'standalone' | 'governed';
+
+export interface DomainEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly skills: readonly string[];
+  readonly agents: readonly string[];
+}
+
+export interface SkillEntry {
+  readonly name: string;
+  readonly description: string;
+  readonly tools: readonly string[];
+}
+
+export interface RuleEntry {
+  readonly name: string;
+  readonly phase: 'pre' | 'post';
+  readonly severity: 'block' | 'warn' | 'log';
+  readonly enabled: boolean;
+}
+
+export interface AuditLogEntry {
+  readonly timestamp: string;
+  readonly userId: string;
+  readonly action: string;
+  readonly decision: 'allowed' | 'denied' | 'pending';
+  readonly toolName?: string;
+  readonly details?: string;
+}
+
+export interface GovernanceState {
+  policyMode: PolicyMode;
+  domains: DomainEntry[];
+  skills: SkillEntry[];
+  rules: RuleEntry[];
+  auditLog: AuditLogEntry[];
+}

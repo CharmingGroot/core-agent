@@ -51,6 +51,15 @@ importers:
 
   core-packages/harness:
     dependencies:
+      '@cli-agent/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@cli-agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@cli-agent/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
       '@core/context-engine':
         specifier: workspace:*
         version: link:../context-engine
@@ -292,6 +301,9 @@ importers:
       '@cli-agent/tools':
         specifier: workspace:*
         version: link:../tools
+      '@core/types':
+        specifier: workspace:*
+        version: link:../../core-packages/types
       react:
         specifier: ^18.3.0
         version: 18.3.1

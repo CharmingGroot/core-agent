@@ -8,6 +8,15 @@ export interface ElectronApi {
   onAgentResponse: (callback: (payload: AgentResponsePayload) => void) => () => void;
   onAgentError: (callback: (payload: AgentErrorPayload) => void) => () => void;
   onConfigValue: (callback: (config: ConfigPayload) => void) => () => void;
+
+  // Governance API
+  govGetState: () => void;
+  govSetMode: (mode: 'standalone' | 'governed') => void;
+  govAddDomain: (domain: Omit<GovernanceDomainPayload, 'id'>) => void;
+  govRemoveDomain: (id: string) => void;
+  govToggleRule: (ruleName: string) => void;
+  govClearAudit: () => void;
+  onGovState: (callback: (state: GovernanceStatePayload) => void) => () => void;
 }
 
 export interface ConfigPayload {
@@ -36,4 +45,42 @@ export interface AgentResponsePayload {
 export interface AgentErrorPayload {
   message: string;
   code?: string;
+}
+
+export interface GovernanceStatePayload {
+  policyMode: 'standalone' | 'governed';
+  domains: readonly GovernanceDomainPayload[];
+  skills: readonly GovernanceSkillPayload[];
+  rules: readonly GovernanceRulePayload[];
+  auditLog: readonly GovernanceAuditPayload[];
+}
+
+export interface GovernanceDomainPayload {
+  id: string;
+  name: string;
+  description: string;
+  skills: readonly string[];
+  agents: readonly string[];
+}
+
+export interface GovernanceSkillPayload {
+  name: string;
+  description: string;
+  tools: readonly string[];
+}
+
+export interface GovernanceRulePayload {
+  name: string;
+  phase: 'pre' | 'post';
+  severity: 'block' | 'warn' | 'log';
+  enabled: boolean;
+}
+
+export interface GovernanceAuditPayload {
+  timestamp: string;
+  userId: string;
+  action: string;
+  decision: 'allowed' | 'denied' | 'pending';
+  toolName?: string;
+  details?: string;
 }

@@ -42,7 +42,7 @@ export function ChatPanel({
         {messages.length === 0 && (
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>{'>'}_</div>
-            <div style={styles.emptyTitle}>CLI Agent</div>
+            <div style={styles.emptyTitle}>Chamelion</div>
             <div style={styles.emptySubtitle}>
               Send a message to start a conversation
             </div>

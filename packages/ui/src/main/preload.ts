@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC_CHANNELS } from './ipc-channels.js';
-import type { ConfigPayload, AgentEventPayload, AgentResponsePayload, AgentErrorPayload } from './ipc-channels.js';
+import type {
+  ConfigPayload,
+  AgentEventPayload,
+  AgentResponsePayload,
+  AgentErrorPayload,
+  GovernanceStatePayload,
+  GovernanceDomainPayload,
+} from './ipc-channels.js';
 
 export interface ElectronApi {
   sendMessage: (message: string) => void;
@@ -11,6 +18,15 @@ export interface ElectronApi {
   onAgentResponse: (callback: (payload: AgentResponsePayload) => void) => () => void;
   onAgentError: (callback: (payload: AgentErrorPayload) => void) => () => void;
   onConfigValue: (callback: (config: ConfigPayload) => void) => () => void;
+
+  // Governance API
+  govGetState: () => void;
+  govSetMode: (mode: 'standalone' | 'governed') => void;
+  govAddDomain: (domain: Omit<GovernanceDomainPayload, 'id'>) => void;
+  govRemoveDomain: (id: string) => void;
+  govToggleRule: (ruleName: string) => void;
+  govClearAudit: () => void;
+  onGovState: (callback: (state: GovernanceStatePayload) => void) => () => void;
 }
 
 const api: ElectronApi = {
@@ -45,6 +61,31 @@ const api: ElectronApi = {
     const handler = (_event: Electron.IpcRendererEvent, config: ConfigPayload) => callback(config);
     ipcRenderer.on(IPC_CHANNELS.CONFIG_VALUE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.CONFIG_VALUE, handler);
+  },
+
+  // Governance API
+  govGetState: () => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_GET_STATE);
+  },
+  govSetMode: (mode: 'standalone' | 'governed') => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_SET_MODE, mode);
+  },
+  govAddDomain: (domain: Omit<GovernanceDomainPayload, 'id'>) => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_ADD_DOMAIN, domain);
+  },
+  govRemoveDomain: (id: string) => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_REMOVE_DOMAIN, id);
+  },
+  govToggleRule: (ruleName: string) => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_TOGGLE_RULE, ruleName);
+  },
+  govClearAudit: () => {
+    ipcRenderer.send(IPC_CHANNELS.GOV_CLEAR_AUDIT);
+  },
+  onGovState: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: GovernanceStatePayload) => callback(state);
+    ipcRenderer.on(IPC_CHANNELS.GOV_STATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.GOV_STATE, handler);
   },
 };
 
