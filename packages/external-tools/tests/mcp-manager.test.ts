@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Registry, EventBus } from '@cli-agent/core';
 import type { ITool } from '@cli-agent/core';
-import { McpManager } from '../src/mcp/mcp-manager.js';
-import { McpClient } from '../src/mcp/mcp-client.js';
-import type { McpServerConfig } from '../src/mcp/mcp-types.js';
+import { McpManager } from '../src/mcp-manager.js';
+import { McpClient } from '../src/mcp-client.js';
+import type { McpServerConfig } from '../src/mcp-types.js';
 
 /** Mock McpClient for unit testing McpManager */
 function mockMcpClient(config: McpServerConfig, tools: Array<{ name: string }> = []) {
