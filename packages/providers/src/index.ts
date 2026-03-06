@@ -6,3 +6,4 @@ export {
   registerProvider,
   getProviderRegistry,
 } from './provider-factory.js';
+export { resolveAuth, extractToken } from './auth/index.js';

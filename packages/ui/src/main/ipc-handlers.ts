@@ -15,7 +15,7 @@ function buildAgentConfig(payload: ConfigPayload): AgentConfig {
     provider: {
       providerId: payload.providerId,
       model: payload.model,
-      apiKey: payload.apiKey,
+      auth: { type: 'api-key', apiKey: payload.apiKey },
       baseUrl: payload.baseUrl,
       maxTokens: payload.maxTokens,
       temperature: payload.temperature,

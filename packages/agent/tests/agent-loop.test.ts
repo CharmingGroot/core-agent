@@ -12,7 +12,7 @@ import type {
 import { Registry } from '@cli-agent/core';
 
 const TEST_CONFIG: AgentConfig = {
-  provider: { providerId: 'test', model: 'test', apiKey: 'test', maxTokens: 4096, temperature: 0.7 },
+  provider: { providerId: 'test', model: 'test', auth: { type: 'api-key' as const, apiKey: 'test' }, maxTokens: 4096, temperature: 0.7 },
   maxIterations: 10,
   workingDirectory: '/tmp',
   systemPrompt: 'You are a test agent.',

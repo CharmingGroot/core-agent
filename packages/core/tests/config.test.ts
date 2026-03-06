@@ -10,7 +10,7 @@ import { ConfigError } from '../src/errors/base-error.js';
 const VALID_PROVIDER = {
   providerId: 'claude',
   model: 'claude-opus-4-6',
-  apiKey: 'sk-test-key-123',
+  auth: { type: 'api-key' as const, apiKey: 'sk-test-key-123' },
 };
 
 describe('Config', () => {

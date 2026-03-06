@@ -8,7 +8,7 @@ import { OpenAIProvider } from '../src/openai-provider.js';
 const CLAUDE_CONFIG: ProviderConfig = {
   providerId: 'claude',
   model: 'claude-opus-4-6',
-  apiKey: 'test-key',
+  auth: { type: 'api-key' as const, apiKey: 'test-key' },
   maxTokens: 4096,
   temperature: 0.7,
 };
@@ -16,7 +16,7 @@ const CLAUDE_CONFIG: ProviderConfig = {
 const OPENAI_CONFIG: ProviderConfig = {
   providerId: 'openai',
   model: 'gpt-4',
-  apiKey: 'test-key',
+  auth: { type: 'api-key' as const, apiKey: 'test-key' },
   maxTokens: 4096,
   temperature: 0.7,
 };

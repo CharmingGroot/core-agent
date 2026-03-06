@@ -5,7 +5,7 @@ import { OpenAIProvider } from '../src/openai-provider.js';
 const CONFIG: ProviderConfig = {
   providerId: 'openai',
   model: 'gpt-4',
-  apiKey: 'test-key',
+  auth: { type: 'api-key' as const, apiKey: 'test-key' },
   maxTokens: 4096,
   temperature: 0.7,
 };
@@ -27,7 +27,7 @@ describe('OpenAIProvider', () => {
   });
 
   it('should throw ProviderError on chat failure', async () => {
-    const provider = new OpenAIProvider({ ...CONFIG, apiKey: 'invalid' });
+    const provider = new OpenAIProvider({ ...CONFIG, auth: { type: 'api-key' as const, apiKey: 'invalid' } });
     await expect(
       provider.chat([{ role: 'user', content: 'test' }])
     ).rejects.toThrow();

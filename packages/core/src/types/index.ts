@@ -38,3 +38,16 @@ export type {
   EventName,
   EventPayload,
 } from './events.js';
+
+export type {
+  AuthType,
+  ApiKeyAuth,
+  OAuthAuth,
+  AzureAdAuth,
+  AwsIamAuth,
+  GcpServiceAccountAuth,
+  CredentialFileAuth,
+  AuthConfig,
+  IAuthStrategy,
+  ResolvedCredential,
+} from './auth.js';

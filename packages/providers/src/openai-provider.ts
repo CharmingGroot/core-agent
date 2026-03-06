@@ -9,6 +9,7 @@ import type {
 } from '@cli-agent/core';
 import { ProviderError } from '@cli-agent/core';
 import { BaseProvider } from './base-provider.js';
+import { extractToken } from './auth/auth-resolver.js';
 
 export class OpenAIProvider extends BaseProvider {
   readonly providerId = 'openai';
@@ -19,7 +20,8 @@ export class OpenAIProvider extends BaseProvider {
 
   constructor(config: ProviderConfig) {
     super('openai-provider');
-    this.client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl });
+    const apiKey = extractToken(config.auth);
+    this.client = new OpenAI({ apiKey, baseURL: config.baseUrl });
     this.model = config.model;
     this.maxTokens = config.maxTokens;
     this.temperature = config.temperature;

@@ -5,7 +5,7 @@ import { ClaudeProvider } from '../src/claude-provider.js';
 const CONFIG: ProviderConfig = {
   providerId: 'claude',
   model: 'claude-opus-4-6',
-  apiKey: 'test-key',
+  auth: { type: 'api-key' as const, apiKey: 'test-key' },
   maxTokens: 4096,
   temperature: 0.7,
 };
@@ -27,7 +27,7 @@ describe('ClaudeProvider', () => {
   });
 
   it('should throw ProviderError on chat failure', async () => {
-    const provider = new ClaudeProvider({ ...CONFIG, apiKey: 'invalid' });
+    const provider = new ClaudeProvider({ ...CONFIG, auth: { type: 'api-key' as const, apiKey: 'invalid' } });
     await expect(
       provider.chat([{ role: 'user', content: 'test' }])
     ).rejects.toThrow();

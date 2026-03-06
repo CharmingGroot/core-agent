@@ -9,6 +9,7 @@ import type {
 } from '@cli-agent/core';
 import { ProviderError } from '@cli-agent/core';
 import { BaseProvider } from './base-provider.js';
+import { extractToken } from './auth/auth-resolver.js';
 
 interface AnthropicToolParam {
   name: string;
@@ -28,7 +29,8 @@ export class ClaudeProvider extends BaseProvider {
 
   constructor(config: ProviderConfig) {
     super('claude-provider');
-    this.client = new Anthropic({ apiKey: config.apiKey, baseURL: config.baseUrl });
+    const apiKey = extractToken(config.auth);
+    this.client = new Anthropic({ apiKey, baseURL: config.baseUrl });
     this.model = config.model;
     this.maxTokens = config.maxTokens;
   }

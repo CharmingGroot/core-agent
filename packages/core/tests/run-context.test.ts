@@ -7,7 +7,7 @@ const TEST_CONFIG: AgentConfig = {
   provider: {
     providerId: 'test',
     model: 'test-model',
-    apiKey: 'test-key',
+    auth: { type: 'api-key' as const, apiKey: 'test-key' },
     maxTokens: 4096,
     temperature: 0.7,
   },

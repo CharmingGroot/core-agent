@@ -58,7 +58,7 @@ function buildConfig(opts: Record<string, string>): AgentConfig {
     provider: {
       providerId: opts['provider'],
       model: opts['model'],
-      apiKey: opts['apiKey'],
+      auth: { type: 'api-key', apiKey: opts['apiKey'] },
       baseUrl: opts['baseUrl'],
       maxTokens: parseInt(opts['maxTokens'] ?? '4096', 10),
       temperature: parseFloat(opts['temperature'] ?? '0.7'),

@@ -25,6 +25,16 @@ export type {
   AgentEvents,
   EventName,
   EventPayload,
+  AuthType,
+  ApiKeyAuth,
+  OAuthAuth,
+  AzureAdAuth,
+  AwsIamAuth,
+  GcpServiceAccountAuth,
+  CredentialFileAuth,
+  AuthConfig,
+  IAuthStrategy,
+  ResolvedCredential,
 } from './types/index.js';
 export { toolResultSchema } from './types/index.js';
 
@@ -36,10 +46,12 @@ export { RunContext } from './run-context.js';
 // Config
 export {
   providerConfigSchema,
+  authConfigSchema,
   sandboxConfigSchema,
   agentConfigSchema,
   parseConfig,
   parseAgentConfig,
+  apiKeyAuth,
 } from './config.js';
 export type { ProviderConfig, SandboxConfigInput, AgentConfig } from './config.js';
 
