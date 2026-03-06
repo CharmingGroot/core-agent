@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SkillLoader } from '../src/skill-loader.js';
+import { SkillRegistry } from '../src/skill-registry.js';
+import type { WatchStopFn } from '../src/skill-loader.js';
 
 const SAMPLE_SKILL_MD = `# test-skill
 
@@ -100,6 +102,123 @@ describe('SkillLoader', () => {
 
   it('should call watch without throwing', () => {
     const loader = new SkillLoader(tempDir);
-    expect(() => loader.watch()).not.toThrow();
+    const registry = new SkillRegistry();
+    const stop = loader.watch(registry);
+    expect(typeof stop).toBe('function');
+    stop();
+  });
+});
+
+/**
+ * Helper: wait for a given number of milliseconds.
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Debounce + fs.watch propagation can be slow on CI / Windows.
+ * We use a short debounce and generous settle time.
+ */
+const DEBOUNCE_MS = 50;
+const SETTLE_MS = 400;
+
+describe('SkillLoader.watch()', () => {
+  let tempDir: string;
+  let stopFn: WatchStopFn | undefined;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'skill-watch-test-'));
+  });
+
+  afterEach(async () => {
+    if (stopFn) {
+      stopFn();
+      stopFn = undefined;
+    }
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('should register a skill when a .skill.md file is created', async () => {
+    const loader = new SkillLoader(tempDir);
+    const registry = new SkillRegistry();
+    stopFn = loader.watch(registry, DEBOUNCE_MS);
+
+    await writeFile(join(tempDir, 'new.skill.md'), SAMPLE_SKILL_MD);
+    await delay(SETTLE_MS);
+
+    expect(registry.has('test-skill')).toBe(true);
+    const skill = registry.get('test-skill');
+    expect(skill?.tools).toEqual(['tool_a', 'tool_b']);
+  });
+
+  it('should re-register a skill when a .skill.md file is modified', async () => {
+    /* Pre-create the file before watching */
+    const filePath = join(tempDir, 'update.skill.md');
+    await writeFile(filePath, SAMPLE_SKILL_MD);
+
+    const loader = new SkillLoader(tempDir);
+    const registry = new SkillRegistry();
+    stopFn = loader.watch(registry, DEBOUNCE_MS);
+
+    /* Modify the file with new content */
+    await writeFile(filePath, ANOTHER_SKILL_MD);
+    await delay(SETTLE_MS);
+
+    /* The old name should be gone, new name should be present */
+    expect(registry.has('another-skill')).toBe(true);
+  });
+
+  it('should unregister a skill when a .skill.md file is deleted', async () => {
+    const filePath = join(tempDir, 'delete-me.skill.md');
+    await writeFile(filePath, SAMPLE_SKILL_MD);
+
+    const loader = new SkillLoader(tempDir);
+    const registry = new SkillRegistry();
+
+    /* Manually seed the registry so the watcher knows the mapping */
+    const skill = await loader.loadOne(filePath);
+    registry.register(skill);
+
+    stopFn = loader.watch(registry, DEBOUNCE_MS);
+
+    /* Trigger an add event so the watcher learns the file→name mapping */
+    await writeFile(filePath, SAMPLE_SKILL_MD);
+    await delay(SETTLE_MS);
+    expect(registry.has('test-skill')).toBe(true);
+
+    /* Now delete */
+    await unlink(filePath);
+    await delay(SETTLE_MS);
+
+    expect(registry.has('test-skill')).toBe(false);
+  });
+
+  it('should stop watching when the stop function is called', async () => {
+    const loader = new SkillLoader(tempDir);
+    const registry = new SkillRegistry();
+    stopFn = loader.watch(registry, DEBOUNCE_MS);
+
+    /* Stop immediately */
+    stopFn();
+    stopFn = undefined;
+
+    /* Create a file after stopping — should NOT be registered */
+    await writeFile(join(tempDir, 'late.skill.md'), SAMPLE_SKILL_MD);
+    await delay(SETTLE_MS);
+
+    expect(registry.has('test-skill')).toBe(false);
+  });
+
+  it('should ignore non-.skill.md files', async () => {
+    const loader = new SkillLoader(tempDir);
+    const registry = new SkillRegistry();
+    stopFn = loader.watch(registry, DEBOUNCE_MS);
+
+    await writeFile(join(tempDir, 'readme.md'), '# Not a skill');
+    await writeFile(join(tempDir, 'config.json'), '{}');
+    await delay(SETTLE_MS);
+
+    expect(registry.getAll()).toHaveLength(0);
   });
 });
