@@ -86,7 +86,7 @@ export const agentConfigSchema = z.object({
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 
-export function parseConfig<T>(schema: z.ZodSchema<T>, raw: unknown): T {
+export function parseConfig<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, raw: unknown): T {
   const result = schema.safeParse(raw);
   if (!result.success) {
     const messages = result.error.issues

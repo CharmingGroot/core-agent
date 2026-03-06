@@ -8,6 +8,10 @@ const MAX_OUTPUT_LENGTH = 100000;
 
 export class ShellExecTool extends BaseTool {
   readonly name = 'shell_exec';
+
+  constructor() {
+    super('shell-exec');
+  }
   readonly requiresPermission = true;
 
   describe(): ToolDescription {

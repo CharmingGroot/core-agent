@@ -8,6 +8,10 @@ export class FileWriteTool extends BaseTool {
   readonly name = 'file_write';
   readonly requiresPermission = true;
 
+  constructor() {
+    super('file-write');
+  }
+
   describe(): ToolDescription {
     return {
       name: this.name,

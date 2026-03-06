@@ -1,14 +1,14 @@
 import type { SandboxConfig, ISandbox } from '@cli-agent/core';
 import { SandboxError, createChildLogger } from '@cli-agent/core';
+import type { AgentLogger } from '@cli-agent/core';
 import { DockerSandbox } from './docker-wrapper.js';
-import type { Logger } from 'pino';
 
 const DEFAULT_POOL_SIZE = 2;
 
 export class SandboxManager {
   private readonly pool: ISandbox[] = [];
   private readonly active = new Map<string, ISandbox>();
-  private readonly logger: Logger;
+  private readonly logger: AgentLogger;
   private config: SandboxConfig | undefined;
 
   constructor() {

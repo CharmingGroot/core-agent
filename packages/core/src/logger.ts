@@ -1,5 +1,6 @@
 import pino from 'pino';
 
+export type AgentLogger = pino.Logger;
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 const LOG_LEVEL_KEY = 'CLI_AGENT_LOG_LEVEL';

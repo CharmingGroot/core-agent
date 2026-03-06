@@ -6,13 +6,12 @@ import type {
   JsonObject,
 } from '@cli-agent/core';
 import { createChildLogger, ToolExecutionError } from '@cli-agent/core';
-import type { RunContext } from '@cli-agent/core';
-import type { Logger } from 'pino';
+import type { RunContext, AgentLogger } from '@cli-agent/core';
 
 export abstract class BaseTool implements ITool {
   abstract readonly name: string;
   abstract readonly requiresPermission: boolean;
-  protected readonly logger: Logger;
+  protected readonly logger: AgentLogger;
 
   constructor(loggerName: string) {
     this.logger = createChildLogger(loggerName);

@@ -2,7 +2,7 @@ import Docker from 'dockerode';
 import { Readable } from 'node:stream';
 import type { SandboxConfig, ExecutionRequest, ExecutionResult, ISandbox } from '@cli-agent/core';
 import { SandboxError, createChildLogger } from '@cli-agent/core';
-import type { Logger } from 'pino';
+import type { AgentLogger } from '@cli-agent/core';
 
 const LANGUAGE_COMMANDS: Record<string, string[]> = {
   javascript: ['node', '-e'],
@@ -16,7 +16,7 @@ export class DockerSandbox implements ISandbox {
   containerId = '';
   private container: Docker.Container | undefined;
   private readonly docker: Docker;
-  private readonly logger: Logger;
+  private readonly logger: AgentLogger;
   private config: SandboxConfig | undefined;
 
   constructor(docker?: Docker) {
@@ -81,7 +81,6 @@ export class DockerSandbox implements ISandbox {
 
       return { exitCode, stdout, stderr, timedOut, durationMs };
     } catch (error) {
-      const durationMs = Date.now() - startTime;
       if (error instanceof SandboxError) throw error;
       throw new SandboxError(
         `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -127,7 +126,7 @@ export class DockerSandbox implements ISandbox {
 
       const timeout = setTimeout(() => {
         timedOut = true;
-        stream.destroy();
+        (stream as NodeJS.ReadableStream & { destroy?: () => void }).destroy?.();
         resolve({ stdout, stderr: stderr + '\n[Execution timed out]', timedOut });
       }, timeoutMs);
 

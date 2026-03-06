@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ChatMessage, ToolCallDisplay, AppConfig } from '../types.js';
-import type { ElectronApi } from '../../main/preload.js';
+import type { ElectronApi } from '../electron-api.js';
 
 declare global {
   interface Window {

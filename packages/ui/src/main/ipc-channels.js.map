@@ -1,0 +1,1 @@
+{"version":3,"file":"ipc-channels.js","sourceRoot":"","sources":["ipc-channels.ts"],"names":[],"mappings":"AAAA,MAAM,CAAC,MAAM,YAAY,GAAG;IAC1B,mBAAmB;IACnB,YAAY,EAAE,oBAAoB;IAClC,KAAK,EAAE,aAAa;IACpB,UAAU,EAAE,YAAY;IACxB,UAAU,EAAE,YAAY;IAExB,mBAAmB;IACnB,WAAW,EAAE,aAAa;IAC1B,cAAc,EAAE,gBAAgB;IAChC,WAAW,EAAE,aAAa;IAC1B,YAAY,EAAE,cAAc;CACpB,CAAC"}

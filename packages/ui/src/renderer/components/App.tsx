@@ -104,7 +104,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 16px',
     backgroundColor: '#020617',
     borderBottom: '1px solid #1e293b',
-    WebkitAppRegion: 'drag' as unknown as string,
     userSelect: 'none',
   },
   titleLeft: {
@@ -127,7 +126,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    WebkitAppRegion: 'no-drag' as unknown as string,
   },
   providerBadge: {
     fontSize: '11px',

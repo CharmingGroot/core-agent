@@ -63,7 +63,7 @@ function sanitizeForIpc(obj: unknown): Record<string, unknown> {
 }
 
 export function registerIpcHandlers(window: BrowserWindow): void {
-  ipcMain.on(IPC_CHANNELS.SEND_MESSAGE, async (event, message: string) => {
+  ipcMain.on(IPC_CHANNELS.SEND_MESSAGE, async (_event, message: string) => {
     if (!currentConfig) {
       window.webContents.send(IPC_CHANNELS.AGENT_ERROR, {
         message: 'No configuration set. Please configure the agent first.',

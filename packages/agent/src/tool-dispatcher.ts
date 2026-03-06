@@ -1,18 +1,16 @@
 import type { ITool, ToolCall, ToolResult, JsonObject } from '@cli-agent/core';
 import {
   Registry,
-  ToolExecutionError,
   PermissionDeniedError,
   createChildLogger,
 } from '@cli-agent/core';
-import type { RunContext } from '@cli-agent/core';
+import type { RunContext, AgentLogger } from '@cli-agent/core';
 import { PermissionManager } from './permission.js';
-import type { Logger } from 'pino';
 
 export class ToolDispatcher {
   private readonly toolRegistry: Registry<ITool>;
   private readonly permissionManager: PermissionManager;
-  private readonly logger: Logger;
+  private readonly logger: AgentLogger;
 
   constructor(toolRegistry: Registry<ITool>, permissionManager: PermissionManager) {
     this.toolRegistry = toolRegistry;

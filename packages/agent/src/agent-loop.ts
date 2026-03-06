@@ -1,9 +1,9 @@
 import type {
   ILlmProvider,
   ITool,
-  LlmResponse,
   AgentConfig,
   ToolDescription,
+  AgentLogger,
 } from '@cli-agent/core';
 import {
   Registry,
@@ -15,7 +15,6 @@ import {
 import { MessageManager } from './message-manager.js';
 import { ToolDispatcher } from './tool-dispatcher.js';
 import { PermissionManager, type PermissionHandler } from './permission.js';
-import type { Logger } from 'pino';
 
 export interface AgentLoopOptions {
   provider: ILlmProvider;
@@ -38,7 +37,7 @@ export class AgentLoop {
   private readonly messageManager: MessageManager;
   private readonly context: RunContext;
   private readonly maxIterations: number;
-  private readonly logger: Logger;
+  private readonly logger: AgentLogger;
   private iterations = 0;
 
   constructor(options: AgentLoopOptions) {

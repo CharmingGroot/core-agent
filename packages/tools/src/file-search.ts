@@ -9,6 +9,10 @@ export class FileSearchTool extends BaseTool {
   readonly name = 'file_search';
   readonly requiresPermission = false;
 
+  constructor() {
+    super('file-search');
+  }
+
   describe(): ToolDescription {
     return {
       name: this.name,

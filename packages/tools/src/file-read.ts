@@ -8,6 +8,10 @@ export class FileReadTool extends BaseTool {
   readonly name = 'file_read';
   readonly requiresPermission = false;
 
+  constructor() {
+    super('file-read');
+  }
+
   describe(): ToolDescription {
     return {
       name: this.name,

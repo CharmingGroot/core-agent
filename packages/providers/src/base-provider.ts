@@ -6,11 +6,11 @@ import type {
   ToolDescription,
 } from '@cli-agent/core';
 import { createChildLogger } from '@cli-agent/core';
-import type { Logger } from 'pino';
+import type { AgentLogger } from '@cli-agent/core';
 
 export abstract class BaseProvider implements ILlmProvider {
   abstract readonly providerId: string;
-  protected readonly logger: Logger;
+  protected readonly logger: AgentLogger;
 
   constructor(loggerName: string) {
     this.logger = createChildLogger(loggerName);

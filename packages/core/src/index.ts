@@ -57,7 +57,7 @@ export type { ProviderConfig, SandboxConfigInput, AgentConfig } from './config.j
 
 // Logger
 export { createLogger, createChildLogger, getRootLogger } from './logger.js';
-export type { LogLevel } from './logger.js';
+export type { LogLevel, AgentLogger } from './logger.js';
 
 // Errors
 export {
