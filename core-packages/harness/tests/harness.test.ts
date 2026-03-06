@@ -9,7 +9,9 @@ import type {
   HarnessRequest,
 } from '@core/types';
 import { OpenPolicy } from '@core/types';
+import { MockSubAgentExecutor } from '@core/orchestrator';
 import { Harness } from '../src/harness.js';
+import { HarnessBuilder } from '../src/harness-builder.js';
 
 const SAMPLE_SKILL_MD = `# code-review
 
@@ -265,5 +267,92 @@ describe('Harness', () => {
     const status = harness.getStatus();
     expect(status.domains[0].totalRequests).toBe(2);
     expect(status.domains[0].activeSessions).toBe(0);
+  });
+
+  it('should route request through orchestrator when executor is provided', async () => {
+    await writeFile(join(skillsDir, 'code-review.skill.md'), SAMPLE_SKILL_MD);
+
+    const executor = new MockSubAgentExecutor();
+    const config = buildConfig(
+      [createDomainConfig('dev', ['code-review'])],
+      'dev',
+    );
+    const harness = new Harness(config, new OpenPolicy(), executor);
+    await harness.initialize();
+
+    const response = await harness.handleRequest(
+      createRequest({ goal: 'Review the code review changes' }),
+    );
+
+    expect(response.success).toBe(true);
+    expect(response.tasksExecuted).toBeGreaterThanOrEqual(1);
+    // MockSubAgentExecutor should have been called
+    expect(executor.executedTasks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should use stub mode when no executor is provided', async () => {
+    await writeFile(join(skillsDir, 'code-review.skill.md'), SAMPLE_SKILL_MD);
+
+    const config = buildConfig(
+      [createDomainConfig('dev', ['code-review'])],
+      'dev',
+    );
+    // No executor — stub mode
+    const harness = new Harness(config, new OpenPolicy());
+    await harness.initialize();
+
+    const response = await harness.handleRequest(createRequest());
+
+    expect(response.success).toBe(true);
+    // Stub mode returns domain match info
+    expect(response.content).toContain('dev');
+    expect(response.content).toContain('code-review');
+  });
+
+  it('should pass domain skills to orchestrator', async () => {
+    await writeFile(join(skillsDir, 'code-review.skill.md'), SAMPLE_SKILL_MD);
+    await writeFile(join(skillsDir, 'deploy.skill.md'), DEPLOY_SKILL_MD);
+
+    const executor = new MockSubAgentExecutor();
+    const config = buildConfig(
+      [
+        createDomainConfig('dev', ['code-review']),
+        createDomainConfig('ops', ['deploy']),
+      ],
+    );
+    const harness = new Harness(config, new OpenPolicy(), executor);
+    await harness.initialize();
+
+    const response = await harness.handleRequest(
+      createRequest({ domainId: 'ops', goal: 'Deploy the application deploy' }),
+    );
+
+    expect(response.success).toBe(true);
+    // Verify the executor received a task related to the ops domain skill
+    const executedAgentIds = executor.executedTasks.map((t) => t.agentId);
+    const hasDeployAgent = executedAgentIds.some((id) => id.includes('deploy'));
+    expect(hasDeployAgent).toBe(true);
+  });
+
+  it('should build harness with executor via HarnessBuilder', async () => {
+    await writeFile(join(skillsDir, 'code-review.skill.md'), SAMPLE_SKILL_MD);
+
+    const executor = new MockSubAgentExecutor();
+    const harness = new HarnessBuilder()
+      .withDomain(createDomainConfig('dev', ['code-review']))
+      .withDefaultDomain('dev')
+      .withSkillsDir(skillsDir)
+      .withRulesDir(rulesDir)
+      .withExecutor(executor)
+      .build();
+
+    await harness.initialize();
+
+    const response = await harness.handleRequest(
+      createRequest({ goal: 'Review the code review' }),
+    );
+
+    expect(response.success).toBe(true);
+    expect(executor.executedTasks.length).toBeGreaterThanOrEqual(1);
   });
 });

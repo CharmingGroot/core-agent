@@ -11,6 +11,7 @@
  */
 import type { IPolicyProvider, DomainConfig } from '@core/types';
 import { OpenPolicy } from '@core/types';
+import type { ISubAgentExecutor } from '@core/orchestrator';
 import { Harness } from './harness.js';
 
 const DEFAULT_SKILLS_DIR = './skills';
@@ -22,6 +23,7 @@ export class HarnessBuilder {
   private rulesDir: string = DEFAULT_RULES_DIR;
   private policy: IPolicyProvider = new OpenPolicy();
   private defaultDomainId: string | undefined;
+  private executor: ISubAgentExecutor | undefined;
 
   /**
    * Adds a domain configuration to the harness.
@@ -69,6 +71,16 @@ export class HarnessBuilder {
   }
 
   /**
+   * Sets the sub-agent executor for real orchestration.
+   * If not provided, the harness runs in stub mode
+   * (returns domain match info without executing agents).
+   */
+  withExecutor(executor: ISubAgentExecutor): this {
+    this.executor = executor;
+    return this;
+  }
+
+  /**
    * Builds and returns a new Harness instance.
    * The caller must still call harness.initialize() before use.
    */
@@ -81,6 +93,7 @@ export class HarnessBuilder {
         rulesDir: this.rulesDir,
       },
       this.policy,
+      this.executor,
     );
   }
 }

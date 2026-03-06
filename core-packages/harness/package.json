@@ -22,7 +22,10 @@
     "@core/skill": "workspace:*",
     "@core/rule": "workspace:*",
     "@core/orchestrator": "workspace:*",
-    "@core/context-engine": "workspace:*"
+    "@core/context-engine": "workspace:*",
+    "@cli-agent/core": "workspace:*",
+    "@cli-agent/agent": "workspace:*",
+    "@cli-agent/providers": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

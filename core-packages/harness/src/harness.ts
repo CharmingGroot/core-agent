@@ -16,6 +16,12 @@ import type {
 } from '@core/types';
 import { SkillLoader, SkillRegistry } from '@core/skill';
 import { RuleRegistry } from '@core/rule';
+import {
+  Orchestrator,
+  SubAgentRegistry,
+  type ISubAgentExecutor,
+  type OrchestratorResult,
+} from '@core/orchestrator';
 import { DomainManager } from './domain-manager.js';
 
 /** Per-domain runtime state tracked by the harness */
@@ -43,12 +49,18 @@ export class Harness {
   private readonly domainRuntimes: Map<string, DomainRuntime> = new Map();
   private readonly globalSkillRegistry: SkillRegistry;
   private readonly globalRuleRegistry: RuleRegistry;
+  private readonly executor: ISubAgentExecutor | undefined;
   private status: HarnessStatus = 'idle';
   private initialized = false;
 
-  constructor(config: HarnessConfig, policy: IPolicyProvider) {
+  constructor(
+    config: HarnessConfig,
+    policy: IPolicyProvider,
+    executor?: ISubAgentExecutor,
+  ) {
     this.config = config;
     this.policy = policy;
+    this.executor = executor;
     this.domainManager = new DomainManager();
     this.globalSkillRegistry = new SkillRegistry();
     this.globalRuleRegistry = new RuleRegistry();
@@ -145,8 +157,17 @@ export class Harness {
     runtime.totalRequests += 1;
 
     try {
-      // Simplified orchestrator integration:
-      // Return a response indicating the domain was matched and skills are available
+      // If an executor is provided, route through the Orchestrator
+      if (this.executor) {
+        return await this.executeViaOrchestrator(
+          request,
+          runtime,
+          domainId,
+          startTime,
+        );
+      }
+
+      // Stub mode: return a response indicating the domain was matched
       const scopedSkills = runtime.skillRegistry.getAll();
       const skillNames = scopedSkills.map((s) => s.name);
 
@@ -254,6 +275,52 @@ export class Harness {
       totalRequests: 0,
       activeSessions: 0,
     });
+  }
+
+  /**
+   * Routes a request through the Orchestrator with real sub-agent execution.
+   * Creates a SubAgentRegistry from the domain's skills and delegates to Orchestrator.run().
+   */
+  private async executeViaOrchestrator(
+    request: HarnessRequest,
+    runtime: DomainRuntime,
+    domainId: string,
+    startTime: number,
+  ): Promise<HarnessResponse> {
+    const agentRegistry = new SubAgentRegistry();
+
+    // Register each domain skill as a sub-agent descriptor
+    const scopedSkills = runtime.skillRegistry.getAll();
+    for (const skill of scopedSkills) {
+      agentRegistry.register({
+        id: `agent_${skill.name}`,
+        description: skill.description ?? skill.name,
+        skillName: skill.name,
+        parameters: [],
+      });
+    }
+
+    const orchestrator = new Orchestrator({
+      agentRegistry,
+      executor: this.executor!,
+      policy: this.policy,
+    });
+
+    const orchestratorResult: OrchestratorResult = await orchestrator.run({
+      userId: request.userId,
+      domainId,
+      goal: request.goal,
+    });
+
+    return {
+      requestId: request.requestId,
+      success: orchestratorResult.success,
+      content: orchestratorResult.content,
+      tasksExecuted: orchestratorResult.results.length,
+      totalTokens: orchestratorResult.totalTokens,
+      totalDurationMs: Date.now() - startTime,
+      error: orchestratorResult.success ? undefined : orchestratorResult.content,
+    };
   }
 
   /** Ensures initialize() has been called before operations */
