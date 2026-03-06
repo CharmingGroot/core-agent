@@ -13,7 +13,7 @@ export type { SectionName } from './context-budget.js';
 export { HistoryCompressor } from './history-compressor.js';
 
 // Tool filtering
-export { filterToolsBySkill } from './tool-filter.js';
+export { filterToolsBySkill, resolveToolAccess, filterToolsByProfile } from './tool-filter.js';
 
 // Context assembly
 export { ContextAssembler } from './context-assembler.js';
