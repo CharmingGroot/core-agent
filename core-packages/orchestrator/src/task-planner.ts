@@ -106,26 +106,81 @@ export class TaskPlanner {
     return matches.sort((a, b) => b.score - a.score);
   }
 
+  /**
+   * Score-based dependency grouping:
+   * - Tasks with the SAME score have NO dependency on each other (parallel)
+   * - Tasks with a LOWER score depend on ALL higher-scoring tasks completing first
+   */
   private createTasksFromMatches(
     goal: string,
     matches: AgentMatch[],
   ): PlannedTask[] {
-    const previousTaskIds: string[] = [];
+    // Group matches by score (already sorted descending)
+    const scoreGroups = new Map<number, AgentMatch[]>();
+    for (const match of matches) {
+      const group = scoreGroups.get(match.score) ?? [];
+      group.push(match);
+      scoreGroups.set(match.score, group);
+    }
 
-    return matches.map((match) => {
-      const taskId = randomUUID();
-      const task: PlannedTask = {
-        taskId,
-        description: `${goal} (via ${match.agent.id}, matched: ${match.matchedKeywords.join(', ')})`,
-        agentId: match.agent.id,
-        skillName: match.agent.skillName,
-        params: {},
-        dependsOn: [...previousTaskIds],
-        status: 'pending',
-      };
-      previousTaskIds.push(taskId);
-      return task;
-    });
+    const tasks: PlannedTask[] = [];
+    let previousTierTaskIds: string[] = [];
+
+    // Iterate scores in descending order
+    const sortedScores = [...scoreGroups.keys()].sort((a, b) => b - a);
+
+    for (const score of sortedScores) {
+      const group = scoreGroups.get(score)!;
+      const currentTierTaskIds: string[] = [];
+
+      for (const match of group) {
+        const taskId = randomUUID();
+        tasks.push({
+          taskId,
+          description: `${goal} (via ${match.agent.id}, matched: ${match.matchedKeywords.join(', ')})`,
+          agentId: match.agent.id,
+          skillName: match.agent.skillName,
+          params: {},
+          dependsOn: [...previousTierTaskIds],
+          status: 'pending',
+        });
+        currentTierTaskIds.push(taskId);
+      }
+
+      previousTierTaskIds = currentTierTaskIds;
+    }
+
+    return tasks;
+  }
+
+  /**
+   * Decompose goal into fully parallel tasks (no dependencies).
+   * Use when the caller knows all tasks are independent.
+   */
+  decomposeParallel(
+    goal: string,
+    availableAgents: SubAgentDescriptor[],
+  ): TaskPlan {
+    if (availableAgents.length === 0) {
+      return this.createEmptyPlan(goal);
+    }
+
+    const tasks: PlannedTask[] = availableAgents.map((agent) => ({
+      taskId: randomUUID(),
+      description: `${goal} (parallel: ${agent.id})`,
+      agentId: agent.id,
+      skillName: agent.skillName,
+      params: {},
+      dependsOn: [],
+      status: 'pending' as const,
+    }));
+
+    return {
+      goalId: randomUUID(),
+      originalGoal: goal,
+      tasks,
+      createdAt: new Date(),
+    };
   }
 
   private createFallbackTask(

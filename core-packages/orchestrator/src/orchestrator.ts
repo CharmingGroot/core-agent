@@ -7,7 +7,7 @@
  * 1. Policy check (사용자 권한)
  * 2. Available agents 조회
  * 3. Goal → TaskPlan 분해
- * 4. 순차 실행 (dependsOn 존중)
+ * 4. 병렬/순차 실행 (dependsOn 기반 토폴로지 실행)
  * 5. 결과 조립
  */
 import type {
@@ -93,7 +93,7 @@ export class Orchestrator {
       );
     }
 
-    // 4. 순차 실행 (dependsOn 존중)
+    // 4. 토폴로지 기반 실행 (dependsOn 준수, 가능한 경우 병렬 실행)
     const context: ExecutionContext = {
       domainId: request.domainId,
       userId: request.userId,
@@ -104,57 +104,84 @@ export class Orchestrator {
     const results: SubAgentResult[] = [];
     const completedTaskIds = new Set<string>();
     const mutableTasks = plan.tasks.map((t) => ({ ...t }));
+    let failed = false;
 
-    for (const task of mutableTasks) {
-      // dependsOn 검증: 의존 태스크가 모두 완료되었는지 확인
-      const depsReady = task.dependsOn.every((depId) =>
-        completedTaskIds.has(depId),
+    // Topological execution: run ready tasks in parallel batches
+    while (!failed) {
+      // Find all tasks whose dependencies are all completed and not yet processed
+      const readyTasks = mutableTasks.filter(
+        (t) =>
+          t.status === 'pending' &&
+          t.dependsOn.every((depId) => completedTaskIds.has(depId)),
       );
 
-      if (!depsReady) {
-        task.status = 'skipped';
-        results.push({
-          agentId: task.agentId,
-          skillName: task.skillName,
-          success: false,
-          summary: '',
-          error: 'Skipped: dependency not met',
-          tokenUsage: { input: 0, output: 0 },
-          durationMs: 0,
-        });
-        continue;
-      }
-
-      // 스킬 사용 권한 확인
-      const canUse = await this.policy.canUseSkill(
-        request.userId,
-        task.skillName,
-      );
-      if (!canUse) {
-        task.status = 'skipped';
-        results.push({
-          agentId: task.agentId,
-          skillName: task.skillName,
-          success: false,
-          summary: '',
-          error: `Access denied for skill: ${task.skillName}`,
-          tokenUsage: { input: 0, output: 0 },
-          durationMs: 0,
-        });
-        continue;
-      }
-
-      task.status = 'running';
-      const result = await this.executor.execute(task, context);
-      results.push(result);
-
-      if (result.success) {
-        task.status = 'completed';
-        completedTaskIds.add(task.taskId);
-      } else {
-        task.status = 'failed';
-        // 실패 시 파이프라인 중단
+      if (readyTasks.length === 0) {
         break;
+      }
+
+      // Check skill permissions and prepare execution promises
+      const executionPromises: Array<{
+        task: (typeof mutableTasks)[0];
+        promise: Promise<SubAgentResult>;
+      }> = [];
+
+      for (const task of readyTasks) {
+        const canUse = await this.policy.canUseSkill(
+          request.userId,
+          task.skillName,
+        );
+        if (!canUse) {
+          task.status = 'skipped';
+          results.push({
+            agentId: task.agentId,
+            skillName: task.skillName,
+            success: false,
+            summary: '',
+            error: `Access denied for skill: ${task.skillName}`,
+            tokenUsage: { input: 0, output: 0 },
+            durationMs: 0,
+          });
+          continue;
+        }
+
+        task.status = 'running';
+        executionPromises.push({
+          task,
+          promise: this.executor.execute(task, context),
+        });
+      }
+
+      if (executionPromises.length === 0) {
+        continue;
+      }
+
+      // Execute all ready tasks in parallel
+      const batchResults = await Promise.all(
+        executionPromises.map((ep) => ep.promise),
+      );
+
+      for (let i = 0; i < batchResults.length; i++) {
+        const result = batchResults[i];
+        const task = executionPromises[i].task;
+        results.push(result);
+
+        if (result.success) {
+          task.status = 'completed';
+          completedTaskIds.add(task.taskId);
+        } else {
+          task.status = 'failed';
+          failed = true;
+          break;
+        }
+      }
+    }
+
+    // Mark remaining pending tasks as skipped (due to failure)
+    if (failed) {
+      for (const task of mutableTasks) {
+        if (task.status === 'pending') {
+          task.status = 'skipped';
+        }
       }
     }
 

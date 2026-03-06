@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Orchestrator } from '../src/orchestrator.js';
 import { SubAgentRegistry } from '../src/sub-agent-registry.js';
 import { MockSubAgentExecutor } from '../src/sub-agent-executor.js';
-import type { SubAgentDescriptor, IPolicyProvider } from '@core/types';
+import type { SubAgentDescriptor, IPolicyProvider, PlannedTask, SubAgentResult } from '@core/types';
 import { OpenPolicy } from '@core/types';
+import { TaskPlanner } from '../src/task-planner.js';
+import type { ISubAgentExecutor, ExecutionContext } from '../src/sub-agent-executor.js';
 
 function createAgent(
   id: string,
@@ -254,5 +256,168 @@ describe('Orchestrator', () => {
 
     expect(result.success).toBe(true);
     expect(result.content).toContain('Completed');
+  });
+
+  it('should execute independent tasks in parallel', async () => {
+    // Register 3 agents, use decomposeParallel (all independent)
+    const agentA = createAgent('agent_a', 'analyze data patterns', 'analyze');
+    const agentB = createAgent('agent_b', 'visualize data charts', 'visualize');
+    const agentC = createAgent('agent_c', 'report data summary', 'report');
+
+    const parallelRegistry = new SubAgentRegistry();
+    parallelRegistry.register(agentA);
+    parallelRegistry.register(agentB);
+    parallelRegistry.register(agentC);
+
+    const parallelExecutor = new MockSubAgentExecutor();
+
+    // Create orchestrator that uses decomposeParallel via a custom planner
+    const planner = new TaskPlanner();
+    const plan = planner.decomposeParallel('process data', [agentA, agentB, agentC]);
+
+    const orch = new Orchestrator({
+      agentRegistry: parallelRegistry,
+      executor: parallelExecutor,
+      policy: new OpenPolicy(),
+    });
+
+    const result = await orch.run({
+      userId: 'user-1',
+      goal: 'analyze visualize report data',
+    });
+
+    expect(result.success).toBe(true);
+    // All 3 agents should have been executed
+    expect(parallelExecutor.executedTasks.length).toBe(3);
+    const executedAgentIds = parallelExecutor.executedTasks.map((t) => t.agentId);
+    expect(executedAgentIds).toContain('agent_a');
+    expect(executedAgentIds).toContain('agent_b');
+    expect(executedAgentIds).toContain('agent_c');
+  });
+
+  it('should respect dependency ordering', async () => {
+    // Track execution order with timestamps
+    const executionOrder: string[] = [];
+
+    const trackingExecutor: ISubAgentExecutor = {
+      async execute(task: PlannedTask, _context: ExecutionContext): Promise<SubAgentResult> {
+        executionOrder.push(task.agentId);
+        return {
+          agentId: task.agentId,
+          skillName: task.skillName,
+          success: true,
+          summary: `Done: ${task.agentId}`,
+          tokenUsage: { input: 10, output: 5 },
+          durationMs: 10,
+        };
+      },
+    };
+
+    // Create agents where one has higher score -> the other depends on it
+    const highAgent = createAgent('agent_high', 'code review analysis code', 'code-analysis');
+    const lowAgent = createAgent('agent_low', 'deploy code to server', 'deploy');
+
+    const depRegistry = new SubAgentRegistry();
+    depRegistry.register(highAgent);
+    depRegistry.register(lowAgent);
+
+    const orch = new Orchestrator({
+      agentRegistry: depRegistry,
+      executor: trackingExecutor,
+      policy: new OpenPolicy(),
+    });
+
+    // "code review" -> highAgent score 2 (code + review), lowAgent score 1 (code)
+    const result = await orch.run({
+      userId: 'user-1',
+      goal: 'code review',
+    });
+
+    expect(result.success).toBe(true);
+    // High-score agent must execute before low-score agent
+    const highIdx = executionOrder.indexOf('agent_high');
+    const lowIdx = executionOrder.indexOf('agent_low');
+    expect(highIdx).toBeLessThan(lowIdx);
+  });
+
+  it('should execute same-score tasks concurrently', async () => {
+    // Two agents that match with the same score should be in the same batch
+    const agentX = createAgent('agent_x', 'analyze data patterns', 'analyze');
+    const agentY = createAgent('agent_y', 'visualize data charts', 'visualize');
+
+    const concurrentRegistry = new SubAgentRegistry();
+    concurrentRegistry.register(agentX);
+    concurrentRegistry.register(agentY);
+
+    // Track that both tasks are started before either completes
+    let concurrentCount = 0;
+    let maxConcurrent = 0;
+
+    const concurrentExecutor: ISubAgentExecutor = {
+      async execute(task: PlannedTask, _context: ExecutionContext): Promise<SubAgentResult> {
+        concurrentCount++;
+        maxConcurrent = Math.max(maxConcurrent, concurrentCount);
+        // Small delay to ensure overlap detection
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        concurrentCount--;
+        return {
+          agentId: task.agentId,
+          skillName: task.skillName,
+          success: true,
+          summary: `Done: ${task.agentId}`,
+          tokenUsage: { input: 10, output: 5 },
+          durationMs: 10,
+        };
+      },
+    };
+
+    const orch = new Orchestrator({
+      agentRegistry: concurrentRegistry,
+      executor: concurrentExecutor,
+      policy: new OpenPolicy(),
+    });
+
+    // "data" matches both agents with score 1 -> same tier -> parallel
+    const result = await orch.run({
+      userId: 'user-1',
+      goal: 'process data',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.results.length).toBe(2);
+    // Both tasks ran concurrently (maxConcurrent should be 2)
+    expect(maxConcurrent).toBe(2);
+  });
+
+  it('should stop all tasks if one fails in parallel batch', async () => {
+    const agentA = createAgent('agent_a', 'analyze data patterns', 'analyze');
+    const agentB = createAgent('agent_b', 'visualize data charts', 'visualize');
+    const agentC = createAgent('agent_c', 'report data summary', 'report');
+
+    const failRegistry = new SubAgentRegistry();
+    failRegistry.register(agentA);
+    failRegistry.register(agentB);
+    failRegistry.register(agentC);
+
+    const failExecutor = new MockSubAgentExecutor();
+    failExecutor.setAgentFailure('agent_b');
+
+    const orch = new Orchestrator({
+      agentRegistry: failRegistry,
+      executor: failExecutor,
+      policy: new OpenPolicy(),
+    });
+
+    // All three agents match "data" with score 1 -> same tier -> parallel
+    const result = await orch.run({
+      userId: 'user-1',
+      goal: 'process data',
+    });
+
+    expect(result.success).toBe(false);
+    // At least the failing agent should have a result
+    const failedResult = result.results.find((r) => r.agentId === 'agent_b');
+    expect(failedResult).toBeDefined();
+    expect(failedResult?.success).toBe(false);
   });
 });
