@@ -26,6 +26,13 @@ export interface IPolicyProvider {
 
   /** 사용자의 허용된 도구 목록 조회 */
   getAllowedTools(userId: string): Promise<readonly string[]>;
+
+  /**
+   * 사용자의 프로필(도구 접근 제어 단위)을 조회한다.
+   * Standalone 모드에서는 null 반환 (프로필 필터링 없음).
+   * Governed 모드에서는 사용자의 역할 기반으로 Profile을 합성한다.
+   */
+  getProfile(userId: string): Promise<import('./profile.js').Profile | null>;
 }
 
 export interface ApprovalRequest {

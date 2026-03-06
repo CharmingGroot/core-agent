@@ -9,7 +9,7 @@
  *   - skillsDir: './skills'
  *   - rulesDir: './rules'
  */
-import type { IPolicyProvider, DomainConfig } from '@core/types';
+import type { IPolicyProvider, DomainConfig, IOperationTracker } from '@core/types';
 import { OpenPolicy } from '@core/types';
 import type { ISubAgentExecutor } from '@core/orchestrator';
 import { Harness } from './harness.js';
@@ -24,6 +24,7 @@ export class HarnessBuilder {
   private policy: IPolicyProvider = new OpenPolicy();
   private defaultDomainId: string | undefined;
   private executor: ISubAgentExecutor | undefined;
+  private tracker: IOperationTracker | undefined;
 
   /**
    * Adds a domain configuration to the harness.
@@ -81,6 +82,15 @@ export class HarnessBuilder {
   }
 
   /**
+   * Sets the operation tracker for centralized status management.
+   * If not provided, InMemoryOperationTracker is used by default.
+   */
+  withOperationTracker(tracker: IOperationTracker): this {
+    this.tracker = tracker;
+    return this;
+  }
+
+  /**
    * Builds and returns a new Harness instance.
    * The caller must still call harness.initialize() before use.
    */
@@ -94,6 +104,7 @@ export class HarnessBuilder {
       },
       this.policy,
       this.executor,
+      this.tracker,
     );
   }
 }
