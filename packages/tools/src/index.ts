@@ -7,6 +7,7 @@ export { createToolRegistry } from './tool-registry.js';
 export { ReflectTool, type SkillProvider, type SkillGuidelines } from './reflect.js';
 export {
   McpClient,
+  McpConfigStore,
   McpManager,
   McpToolProxy,
   StdioTransport,
