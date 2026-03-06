@@ -64,7 +64,9 @@ describe('CliRenderer', () => {
       runId: 'run-1',
       error: new Error('Test error'),
     });
-    expect(errorSpy).toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalled();
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join(' ');
+    expect(output).toContain('ERROR');
   });
 
   it('should detach and stop listening', () => {
@@ -82,7 +84,9 @@ describe('CliRenderer', () => {
 
   it('should render error message', () => {
     renderer.renderError('Something went wrong');
-    expect(errorSpy).toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalled();
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join(' ');
+    expect(output).toContain('ERROR');
   });
 
   it('should render info message', () => {
