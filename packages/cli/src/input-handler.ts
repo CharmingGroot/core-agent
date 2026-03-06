@@ -2,13 +2,49 @@ import { createInterface, type Interface as ReadlineInterface } from 'node:readl
 import chalk from 'chalk';
 
 const PROMPT_SYMBOL = '> ';
-const EXIT_COMMANDS = new Set(['/exit', '/quit', '/q']);
-const HELP_COMMANDS = new Set(['/help', '/h']);
+
+export type InputType =
+  | 'message'
+  | 'exit'
+  | 'help'
+  | 'clear'
+  | 'model'
+  | 'provider'
+  | 'config'
+  | 'temperature'
+  | 'tokens'
+  | 'system'
+  | 'memory'
+  | 'remember'
+  | 'forget'
+  | 'compact';
 
 export interface InputResult {
-  readonly type: 'message' | 'exit' | 'help' | 'clear';
+  readonly type: InputType;
   readonly content: string;
 }
+
+const COMMAND_MAP: Record<string, InputType> = {
+  '/exit': 'exit',
+  '/quit': 'exit',
+  '/q': 'exit',
+  '/help': 'help',
+  '/h': 'help',
+  '/clear': 'clear',
+  '/model': 'model',
+  '/provider': 'provider',
+  '/config': 'config',
+  '/temperature': 'temperature',
+  '/temp': 'temperature',
+  '/tokens': 'tokens',
+  '/maxtokens': 'tokens',
+  '/system': 'system',
+  '/memory': 'memory',
+  '/mem': 'memory',
+  '/remember': 'remember',
+  '/forget': 'forget',
+  '/compact': 'compact',
+};
 
 export class InputHandler {
   private rl: ReadlineInterface | undefined;
@@ -29,19 +65,25 @@ export class InputHandler {
       this.rl!.question(chalk.cyan(PROMPT_SYMBOL), (answer) => {
         const trimmed = answer.trim();
 
-        if (EXIT_COMMANDS.has(trimmed.toLowerCase())) {
-          resolve({ type: 'exit', content: '' });
+        if (!trimmed) {
+          resolve({ type: 'message', content: '' });
           return;
         }
 
-        if (HELP_COMMANDS.has(trimmed.toLowerCase())) {
-          resolve({ type: 'help', content: '' });
-          return;
-        }
+        if (trimmed.startsWith('/')) {
+          const spaceIdx = trimmed.indexOf(' ');
+          const cmd = spaceIdx === -1
+            ? trimmed.toLowerCase()
+            : trimmed.slice(0, spaceIdx).toLowerCase();
+          const arg = spaceIdx === -1
+            ? ''
+            : trimmed.slice(spaceIdx + 1).trim();
 
-        if (trimmed.toLowerCase() === '/clear') {
-          resolve({ type: 'clear', content: '' });
-          return;
+          const type = COMMAND_MAP[cmd];
+          if (type) {
+            resolve({ type, content: arg });
+            return;
+          }
         }
 
         resolve({ type: 'message', content: trimmed });
