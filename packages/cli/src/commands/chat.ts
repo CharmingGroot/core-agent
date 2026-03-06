@@ -1,7 +1,8 @@
 import type { AgentConfig, ProviderConfig } from '@cli-agent/core';
 import { EventBus, parseAgentConfig } from '@cli-agent/core';
 import { createProvider } from '@cli-agent/providers';
-import { createToolRegistry, McpManager, McpConfigStore } from '@cli-agent/tools';
+import { createToolRegistry } from '@cli-agent/tools';
+import { McpManager, McpConfigStore } from '@cli-agent/external-tools';
 import { AgentLoop } from '@cli-agent/agent';
 import { CliRenderer } from '../renderer.js';
 import { InputHandler } from '../input-handler.js';

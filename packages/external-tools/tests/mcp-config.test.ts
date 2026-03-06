@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { McpConfigStore } from '../src/mcp/mcp-config.js';
-import type { McpServerConfig } from '../src/mcp/mcp-types.js';
+import { McpConfigStore } from '../src/mcp-config.js';
+import type { McpServerConfig } from '../src/mcp-types.js';
 
 describe('McpConfigStore', () => {
   let tempDir: string;

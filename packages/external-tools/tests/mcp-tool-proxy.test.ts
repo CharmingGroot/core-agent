@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { McpToolProxy } from '../src/mcp/mcp-tool-proxy.js';
-import type { McpClient } from '../src/mcp/mcp-client.js';
-import type { McpToolDefinition, McpToolCallResult } from '../src/mcp/mcp-types.js';
+import { McpToolProxy } from '../src/mcp-tool-proxy.js';
+import type { McpClient } from '../src/mcp-client.js';
+import type { McpToolDefinition, McpToolCallResult } from '../src/mcp-types.js';
 import { RunContext, EventBus } from '@cli-agent/core';
 
 function createMockClient(serverName: string): McpClient {

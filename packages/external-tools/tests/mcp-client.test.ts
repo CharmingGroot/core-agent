@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IMcpTransport } from '../src/mcp/mcp-transport.js';
-import type { JsonRpcRequest, JsonRpcResponse, JsonRpcNotification } from '../src/mcp/mcp-types.js';
-import { McpClient } from '../src/mcp/mcp-client.js';
+import type { IMcpTransport } from '../src/mcp-transport.js';
+import type { JsonRpcRequest, JsonRpcResponse, JsonRpcNotification } from '../src/mcp-types.js';
+import { McpClient } from '../src/mcp-client.js';
 
 /** Creates a mock transport that responds to MCP protocol messages */
 function createMockTransport(): IMcpTransport & { start: () => Promise<void> } {

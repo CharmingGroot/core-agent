@@ -1,6 +1,6 @@
 import chalk from 'chalk';
-import { McpManager, McpConfigStore } from '@cli-agent/tools';
-import type { McpServerConfig } from '@cli-agent/tools';
+import { McpManager, McpConfigStore } from '@cli-agent/external-tools';
+import type { McpServerConfig } from '@cli-agent/external-tools';
 
 /**
  * Handles /mcp subcommands: connect, disconnect, list, reconnect.
