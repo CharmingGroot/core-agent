@@ -18,14 +18,15 @@ export type InputType =
   | 'remember'
   | 'forget'
   | 'compact'
-  | 'soul';
+  | 'soul'
+  | 'mcp';
 
 export interface InputResult {
   readonly type: InputType;
   readonly content: string;
 }
 
-const COMMAND_MAP: Record<string, InputType> = {
+export const COMMAND_MAP: Record<string, InputType> = {
   '/exit': 'exit',
   '/quit': 'exit',
   '/q': 'exit',
@@ -46,6 +47,7 @@ const COMMAND_MAP: Record<string, InputType> = {
   '/forget': 'forget',
   '/compact': 'compact',
   '/soul': 'soul',
+  '/mcp': 'mcp',
 };
 
 export class InputHandler {

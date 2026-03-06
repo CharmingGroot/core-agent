@@ -1,12 +1,13 @@
 import type { AgentConfig, ProviderConfig } from '@cli-agent/core';
 import { EventBus, parseAgentConfig } from '@cli-agent/core';
 import { createProvider } from '@cli-agent/providers';
-import { createToolRegistry } from '@cli-agent/tools';
+import { createToolRegistry, McpManager, McpConfigStore } from '@cli-agent/tools';
 import { AgentLoop } from '@cli-agent/agent';
 import { CliRenderer } from '../renderer.js';
 import { InputHandler } from '../input-handler.js';
 import { MemoryManager } from '../memory-manager.js';
 import { SoulLoader } from '../soul-loader.js';
+import { handleMcpCommand } from '../mcp-handler.js';
 import chalk from 'chalk';
 
 interface MutableConfig {
@@ -58,10 +59,10 @@ function toAgentConfig(m: MutableConfig, memory: MemoryManager, soul?: SoulLoade
 
 function createAgent(
   config: AgentConfig,
-  eventBus: EventBus
+  eventBus: EventBus,
+  toolRegistry: ReturnType<typeof createToolRegistry>,
 ): AgentLoop {
   const provider = createProvider(config.provider);
-  const toolRegistry = createToolRegistry();
   return new AgentLoop({ provider, toolRegistry, config, eventBus });
 }
 
@@ -79,8 +80,23 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
   const soul = new SoulLoader(current.workingDirectory);
   await soul.load();
 
+  const toolRegistry = createToolRegistry();
+  const mcpManager = new McpManager(toolRegistry, eventBus);
+  const mcpConfigStore = new McpConfigStore();
+
+  // Auto-connect saved MCP servers
+  const savedMcpConfigs = await mcpConfigStore.load();
+  for (const serverConfig of savedMcpConfigs) {
+    try {
+      const status = await mcpManager.connect(serverConfig);
+      console.log(chalk.green(`  MCP: auto-connected "${status.name}" (${chalk.cyan(String(status.toolCount))} tools)`));
+    } catch (err) {
+      console.log(chalk.red(`  MCP: failed to auto-connect "${serverConfig.name}": ${err instanceof Error ? err.message : String(err)}`));
+    }
+  }
+
   let agentConfig = toAgentConfig(current, memory, soul);
-  let agent = createAgent(agentConfig, eventBus);
+  let agent = createAgent(agentConfig, eventBus, toolRegistry);
 
   const memCount = memory.list().length;
 
@@ -101,7 +117,7 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
 
   function rebuildAgent(): void {
     agentConfig = toAgentConfig(current, memory, soul);
-    agent = createAgent(agentConfig, eventBus);
+    agent = createAgent(agentConfig, eventBus, toolRegistry);
   }
 
   try {
@@ -303,6 +319,11 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
           continue;
         }
 
+        case 'mcp': {
+          await handleMcpCommand(result.content, mcpManager, mcpConfigStore);
+          continue;
+        }
+
         case 'message': {
           if (!result.content) continue;
 
@@ -319,6 +340,7 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
       }
     }
   } finally {
+    await mcpManager.disconnectAll();
     await memory.save();
     renderer.detach();
     input.close();
@@ -371,5 +393,12 @@ function printHelp(): void {
   console.log('  /soul               Show current SOUL.md');
   console.log('  /soul init          Create default SOUL.md');
   console.log('  /soul reload        Reload SOUL.md from disk');
+  console.log('');
+  console.log(chalk.bold('  MCP (Model Context Protocol)'));
+  console.log('  /mcp list           List connected MCP servers');
+  console.log('  /mcp connect stdio  Connect a stdio MCP server');
+  console.log('  /mcp connect sse    Connect an SSE MCP server');
+  console.log('  /mcp disconnect     Disconnect an MCP server');
+  console.log('  /mcp reconnect      Reconnect an MCP server');
   console.log('');
 }
