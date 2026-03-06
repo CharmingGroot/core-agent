@@ -198,4 +198,67 @@ describe('GovernedPolicy', () => {
     expect(await policy.canUseSkill('admin-1', 'anything')).toBe(true);
     expect(await policy.canUseTool('admin-1', 'anything')).toBe(true);
   });
+
+  // --- getProfile ---
+
+  it('should return null profile for non-existent user', async () => {
+    const profile = await policy.getProfile('non-existent');
+    expect(profile).toBeNull();
+  });
+
+  it('should compute profile from single role', async () => {
+    const profile = await policy.getProfile('user-1');
+    expect(profile).not.toBeNull();
+    expect(profile!.allowedTools).toEqual(['bash', 'read-file', 'write-file']);
+    expect(profile!.allowedSkills).toEqual(['code-gen', 'test-gen']);
+    expect(profile!.approvalRequired).toEqual(['deploy']);
+    expect(profile!.policy.auditLevel).toBe('full');
+    expect(profile!.policy.dataClassification).toBe('internal');
+  });
+
+  it('should merge profile from multiple roles', async () => {
+    await store.assignRole('user-1', 'viewer');
+
+    const profile = await policy.getProfile('user-1');
+    expect(profile).not.toBeNull();
+
+    // Merged tools (deduplicated)
+    expect(profile!.allowedTools).toContain('bash');
+    expect(profile!.allowedTools).toContain('read-file');
+    expect(profile!.allowedTools).toContain('write-file');
+
+    // Merged skills
+    expect(profile!.allowedSkills).toContain('code-gen');
+    expect(profile!.allowedSkills).toContain('test-gen');
+    expect(profile!.allowedSkills).toContain('search');
+
+    // approvalRequired from developer role only (viewer has empty)
+    expect(profile!.approvalRequired).toContain('deploy');
+  });
+
+  it('should use most restrictive policy values when merging', async () => {
+    await store.createRole({
+      name: 'restricted',
+      description: 'Restricted role',
+      allowedSkills: [],
+      allowedTools: [],
+      policy: {
+        approvalRequired: [],
+        auditLevel: 'basic',
+        maxTokensPerRequest: 1024,
+        maxToolCallsPerSession: 100,
+        dataClassification: 'confidential',
+        allowedProviders: ['openai'],
+        blockedCommands: [],
+      },
+    });
+    await store.assignRole('user-1', 'restricted');
+
+    const profile = await policy.getProfile('user-1');
+    // Should take highest audit level and data classification
+    expect(profile!.policy.auditLevel).toBe('full');
+    expect(profile!.policy.dataClassification).toBe('confidential');
+    expect(profile!.policy.allowedProviders).toContain('anthropic');
+    expect(profile!.policy.allowedProviders).toContain('openai');
+  });
 });

@@ -79,6 +79,16 @@ export type {
 } from './profile.js';
 export { OPEN_PROFILE_ID } from './profile.js';
 
+// Operation
+export type {
+  OperationStatus,
+  OperationProgress,
+  OperationState,
+  OperationTaskResult,
+  OperationFilter,
+  IOperationTracker,
+} from './operation.js';
+
 // Harness
 export type {
   DomainConfig,

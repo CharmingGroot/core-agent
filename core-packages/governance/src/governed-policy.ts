@@ -11,6 +11,7 @@ import type {
   AuditEntry,
   IGovernanceStore,
   RoleDefinition,
+  Profile,
 } from '@core/types';
 
 /**
@@ -152,5 +153,67 @@ export class GovernedPolicy implements IPolicyProvider {
     }
 
     return [...toolSet];
+  }
+
+  /**
+   * 사용자의 모든 역할을 합성하여 Profile을 생성한다.
+   * 역할이 없으면 null 반환 (인증되지 않은 사용자).
+   */
+  async getProfile(userId: string): Promise<Profile | null> {
+    const roles = await getUserRoles(this.store, userId);
+    if (roles.length === 0) {
+      return null;
+    }
+
+    const allowedTools = new Set<string>();
+    const deniedTools = new Set<string>();
+    const approvalRequired = new Set<string>();
+    const allowedSkills = new Set<string>();
+    const deniedSkills = new Set<string>();
+    const allowedProviders = new Set<string>();
+
+    let maxToolCalls = 0;
+    let auditLevel: 'none' | 'basic' | 'full' = 'none';
+    let dataClassification: 'public' | 'internal' | 'confidential' | 'restricted' = 'public';
+
+    const classificationOrder = ['public', 'internal', 'confidential', 'restricted'] as const;
+    const auditOrder = ['none', 'basic', 'full'] as const;
+
+    for (const role of roles) {
+      for (const tool of role.allowedTools) allowedTools.add(tool);
+      for (const skill of role.allowedSkills) allowedSkills.add(skill);
+      for (const tool of role.policy.approvalRequired) approvalRequired.add(tool);
+      for (const provider of role.policy.allowedProviders) allowedProviders.add(provider);
+
+      // 가장 높은 값 사용 (most restrictive)
+      if (role.policy.maxToolCallsPerSession > maxToolCalls) {
+        maxToolCalls = role.policy.maxToolCallsPerSession;
+      }
+      const auditIdx = auditOrder.indexOf(role.policy.auditLevel);
+      if (auditIdx > auditOrder.indexOf(auditLevel)) {
+        auditLevel = role.policy.auditLevel;
+      }
+      const classIdx = classificationOrder.indexOf(role.policy.dataClassification);
+      if (classIdx > classificationOrder.indexOf(dataClassification)) {
+        dataClassification = role.policy.dataClassification;
+      }
+    }
+
+    return {
+      id: `profile-${userId}`,
+      name: `Computed profile for ${userId}`,
+      description: `Auto-generated from roles: ${roles.map((r) => r.name).join(', ')}`,
+      allowedTools: [...allowedTools],
+      deniedTools: [...deniedTools],
+      approvalRequired: [...approvalRequired],
+      allowedSkills: [...allowedSkills],
+      deniedSkills: [...deniedSkills],
+      policy: {
+        maxToolCallsPerSession: maxToolCalls,
+        auditLevel,
+        allowedProviders: [...allowedProviders],
+        dataClassification,
+      },
+    };
   }
 }

@@ -53,6 +53,7 @@ export interface HarnessRequest {
 
 export interface HarnessResponse {
   readonly requestId: string;
+  readonly operationId: string;
   readonly success: boolean;
   readonly content: string;
   readonly tasksExecuted: number;

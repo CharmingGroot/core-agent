@@ -13,6 +13,7 @@ import type {
   HarnessStatus,
   DomainStatus,
   DomainConfig,
+  IOperationTracker,
 } from '@core/types';
 import { SkillLoader, SkillRegistry } from '@core/skill';
 import { RuleRegistry } from '@core/rule';
@@ -23,6 +24,7 @@ import {
   type OrchestratorResult,
 } from '@core/orchestrator';
 import { DomainManager } from './domain-manager.js';
+import { InMemoryOperationTracker } from './operation-tracker.js';
 
 /** Per-domain runtime state tracked by the harness */
 interface DomainRuntime {
@@ -50,6 +52,7 @@ export class Harness {
   private readonly globalSkillRegistry: SkillRegistry;
   private readonly globalRuleRegistry: RuleRegistry;
   private readonly executor: ISubAgentExecutor | undefined;
+  private readonly operationTracker: IOperationTracker;
   private status: HarnessStatus = 'idle';
   private initialized = false;
 
@@ -57,10 +60,12 @@ export class Harness {
     config: HarnessConfig,
     policy: IPolicyProvider,
     executor?: ISubAgentExecutor,
+    operationTracker?: IOperationTracker,
   ) {
     this.config = config;
     this.policy = policy;
     this.executor = executor;
+    this.operationTracker = operationTracker ?? new InMemoryOperationTracker();
     this.domainManager = new DomainManager();
     this.globalSkillRegistry = new SkillRegistry();
     this.globalRuleRegistry = new RuleRegistry();
@@ -141,6 +146,16 @@ export class Harness {
       );
     }
 
+    // Create operation for tracking
+    const operationId = this.operationTracker.create({
+      requestId: request.requestId,
+      userId: request.userId,
+      domainId,
+      goal: request.goal,
+    });
+
+    this.operationTracker.start(operationId);
+
     // Record the action in audit log
     await this.policy.recordAction({
       timestamp: new Date(),
@@ -159,12 +174,21 @@ export class Harness {
     try {
       // If an executor is provided, route through the Orchestrator
       if (this.executor) {
-        return await this.executeViaOrchestrator(
+        const response = await this.executeViaOrchestrator(
           request,
           runtime,
           domainId,
+          operationId,
           startTime,
         );
+
+        if (response.success) {
+          this.operationTracker.complete(operationId, response.totalTokens);
+        } else {
+          this.operationTracker.fail(operationId, response.error ?? 'Unknown error');
+        }
+
+        return response;
       }
 
       // Stub mode: return a response indicating the domain was matched
@@ -173,6 +197,7 @@ export class Harness {
 
       const response: HarnessResponse = {
         requestId: request.requestId,
+        operationId,
         success: true,
         content: `Domain "${domainId}" matched. ` +
           `Available skills: [${skillNames.join(', ')}]. ` +
@@ -182,10 +207,20 @@ export class Harness {
         totalDurationMs: Date.now() - startTime,
       };
 
+      this.operationTracker.complete(operationId);
       return response;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.operationTracker.fail(operationId, message);
+      throw error;
     } finally {
       runtime.activeSessions -= 1;
     }
+  }
+
+  /** Operation tracker 접근자 — 외부에서 작업 상태 조회용 */
+  get operations(): IOperationTracker {
+    return this.operationTracker;
   }
 
   /**
@@ -285,6 +320,7 @@ export class Harness {
     request: HarnessRequest,
     runtime: DomainRuntime,
     domainId: string,
+    operationId: string,
     startTime: number,
   ): Promise<HarnessResponse> {
     const agentRegistry = new SubAgentRegistry();
@@ -314,6 +350,7 @@ export class Harness {
 
     return {
       requestId: request.requestId,
+      operationId,
       success: orchestratorResult.success,
       content: orchestratorResult.content,
       tasksExecuted: orchestratorResult.results.length,
@@ -330,14 +367,16 @@ export class Harness {
     }
   }
 
-  /** Builds an error HarnessResponse */
+  /** Builds an error HarnessResponse (pre-operation errors have empty operationId) */
   private buildErrorResponse(
     requestId: string,
     errorMessage: string,
     startTime: number,
+    operationId: string = '',
   ): HarnessResponse {
     return {
       requestId,
+      operationId,
       success: false,
       content: '',
       tasksExecuted: 0,

@@ -4,12 +4,17 @@
  * Each task runs in its own AgentLoop instance (independent context window).
  * Maps AgentResult to SubAgentResult (content -> summary, track token usage).
  * Handles timeouts and errors gracefully (returns failed SubAgentResult, never throws).
+ *
+ * Profile integration:
+ *   - Governed mode: loads user profile via policy.getProfile(), filters tools
+ *   - Standalone mode: getProfile() returns null, all tools passed through
  */
 import type { ISubAgentExecutor, ExecutionContext } from '@core/orchestrator';
-import type { PlannedTask, SubAgentResult } from '@core/types';
+import type { PlannedTask, SubAgentResult, Profile } from '@core/types';
 import type { ILlmProvider, ITool, AgentConfig } from '@cli-agent/core';
 import { Registry, EventBus } from '@cli-agent/core';
 import { AgentLoop } from '@cli-agent/agent';
+import { filterToolsByProfile } from '@core/context-engine';
 
 /** Configuration for AgentLoopExecutor */
 export interface AgentLoopExecutorConfig {
@@ -43,6 +48,10 @@ export class AgentLoopExecutor implements ISubAgentExecutor {
         task.skillName,
       );
 
+      // Load profile for tool filtering (null in standalone mode)
+      const profile = await context.policy.getProfile(context.userId);
+      const toolRegistry = this.buildFilteredRegistry(profile);
+
       const agentConfig: AgentConfig = {
         provider: {
           providerId: task.agentId,
@@ -58,7 +67,7 @@ export class AgentLoopExecutor implements ISubAgentExecutor {
 
       const agentLoop = new AgentLoop({
         provider,
-        toolRegistry: this.config.toolRegistry,
+        toolRegistry,
         config: agentConfig,
         eventBus: new EventBus(),
       });
@@ -94,6 +103,37 @@ export class AgentLoopExecutor implements ISubAgentExecutor {
         durationMs,
       };
     }
+  }
+
+  /**
+   * Builds a filtered tool registry based on user profile.
+   * If profile is null (standalone), returns the full registry.
+   * If profile exists (governed), only includes non-denied tools.
+   */
+  private buildFilteredRegistry(profile: Profile | null): Registry<ITool> {
+    if (!profile) {
+      return this.config.toolRegistry;
+    }
+
+    const allTools = this.config.toolRegistry.getAll();
+    const toolDescriptions = allTools.map((tool) => ({
+      name: tool.name,
+      description: tool.describe().description,
+      parameters: [],
+      tokenEstimate: 0,
+    }));
+
+    const allowedDescriptions = filterToolsByProfile(toolDescriptions, profile);
+    const allowedNames = new Set(allowedDescriptions.map((d) => d.name));
+
+    const filtered = new Registry<ITool>('Tool');
+    for (const tool of allTools) {
+      if (allowedNames.has(tool.name)) {
+        filtered.register(tool);
+      }
+    }
+
+    return filtered;
   }
 
   /**

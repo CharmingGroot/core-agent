@@ -42,4 +42,9 @@ export class OpenPolicy implements IPolicyProvider {
   async getAllowedTools(): Promise<readonly string[]> {
     return ['*'];
   }
+
+  async getProfile(): Promise<null> {
+    // Standalone 모드에서는 프로필 없음 — 모든 도구 접근 허용
+    return null;
+  }
 }
