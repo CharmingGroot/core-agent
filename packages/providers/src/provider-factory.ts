@@ -9,6 +9,9 @@ const providerRegistry = new Registry<ProviderConstructor>('Provider');
 
 providerRegistry.register('claude', ClaudeProvider);
 providerRegistry.register('openai', OpenAIProvider);
+providerRegistry.register('vllm', OpenAIProvider);
+providerRegistry.register('ollama', OpenAIProvider);
+providerRegistry.register('custom', OpenAIProvider);
 
 export function createProvider(config: ProviderConfig): ILlmProvider {
   const Constructor = providerRegistry.tryGet(config.providerId);

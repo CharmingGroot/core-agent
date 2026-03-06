@@ -8,6 +8,8 @@ import { ProviderError } from '@cli-agent/core';
  */
 export function extractToken(auth: AuthConfig): string {
   switch (auth.type) {
+    case 'no-auth':
+      return 'no-auth';
     case 'api-key':
       return auth.apiKey;
     case 'oauth':
@@ -25,6 +27,8 @@ export function extractToken(auth: AuthConfig): string {
 
 export async function resolveAuth(auth: AuthConfig): Promise<ResolvedCredential> {
   switch (auth.type) {
+    case 'no-auth':
+      return { type: 'no-auth', headers: {}, token: undefined };
     case 'api-key':
       return resolveApiKey(auth);
     case 'oauth':

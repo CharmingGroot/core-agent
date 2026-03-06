@@ -26,6 +26,7 @@ export type {
   EventName,
   EventPayload,
   AuthType,
+  NoAuth,
   ApiKeyAuth,
   OAuthAuth,
   AzureAdAuth,
@@ -52,6 +53,7 @@ export {
   parseConfig,
   parseAgentConfig,
   apiKeyAuth,
+  noAuth,
 } from './config.js';
 export type { ProviderConfig, SandboxConfigInput, AgentConfig } from './config.js';
 

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { ConfigError } from './errors/base-error.js';
 
+const noAuthSchema = z.object({
+  type: z.literal('no-auth'),
+});
+
 const apiKeyAuthSchema = z.object({
   type: z.literal('api-key'),
   apiKey: z.string().min(1),
@@ -47,6 +51,7 @@ const credentialFileAuthSchema = z.object({
 });
 
 export const authConfigSchema = z.discriminatedUnion('type', [
+  noAuthSchema,
   apiKeyAuthSchema,
   oauthAuthSchema,
   azureAdAuthSchema,
@@ -107,4 +112,8 @@ export function parseAgentConfig(raw: unknown): AgentConfig {
  */
 export function apiKeyAuth(apiKey: string): { type: 'api-key'; apiKey: string } {
   return { type: 'api-key', apiKey };
+}
+
+export function noAuth(): { type: 'no-auth' } {
+  return { type: 'no-auth' };
 }

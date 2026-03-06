@@ -6,6 +6,7 @@ import { AgentLoop } from '@cli-agent/agent';
 import { CliRenderer } from '../renderer.js';
 import { InputHandler } from '../input-handler.js';
 import { MemoryManager } from '../memory-manager.js';
+import { SoulLoader } from '../soul-loader.js';
 import chalk from 'chalk';
 
 interface MutableConfig {
@@ -34,11 +35,11 @@ function toMutable(config: AgentConfig): MutableConfig {
   };
 }
 
-function toAgentConfig(m: MutableConfig, memory: MemoryManager): AgentConfig {
+function toAgentConfig(m: MutableConfig, memory: MemoryManager, soul?: SoulLoader): AgentConfig {
+  const soulPrompt = soul?.toSystemPrompt() ?? '';
   const memoryPrompt = memory.toSystemPrompt();
-  const systemPrompt = m.systemPrompt
-    ? m.systemPrompt + memoryPrompt
-    : memoryPrompt || undefined;
+  const parts = [soulPrompt, m.systemPrompt ?? '', memoryPrompt].filter(Boolean);
+  const systemPrompt = parts.length > 0 ? parts.join('\n') : undefined;
 
   return parseAgentConfig({
     provider: {
@@ -75,21 +76,31 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
   const current = toMutable(config);
   const memory = new MemoryManager(current.workingDirectory);
   await memory.load();
+  const soul = new SoulLoader(current.workingDirectory);
+  await soul.load();
 
-  let agentConfig = toAgentConfig(current, memory);
+  let agentConfig = toAgentConfig(current, memory, soul);
   let agent = createAgent(agentConfig, eventBus);
 
   const memCount = memory.list().length;
 
   console.log(chalk.bold('\nCLI Agent'));
   console.log(chalk.dim(`Provider: ${current.providerId} | Model: ${current.model}`));
+  if (soul.isLoaded) {
+    console.log(chalk.dim(`Soul: loaded from ${soul.filePath}`));
+  }
   if (memCount > 0) {
     console.log(chalk.dim(`Memory: ${memCount} entries loaded from ${memory.filePath}`));
   }
   console.log(chalk.dim('Type /help for commands, /exit to quit\n'));
 
+  if (!soul.isLoaded) {
+    console.log(chalk.yellow('  Tip: No SOUL.md found. Personalize your agent with /soul init'));
+    console.log(chalk.dim('  Edit SOUL.md to set persona, tone, and behavior rules.\n'));
+  }
+
   function rebuildAgent(): void {
-    agentConfig = toAgentConfig(current, memory);
+    agentConfig = toAgentConfig(current, memory, soul);
     agent = createAgent(agentConfig, eventBus);
   }
 
@@ -115,7 +126,7 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
         }
 
         case 'config': {
-          printConfig(current, memory);
+          printConfig(current, memory, soul);
           continue;
         }
 
@@ -245,6 +256,53 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
           continue;
         }
 
+        case 'soul': {
+          if (!result.content) {
+            if (soul.isLoaded) {
+              console.log(chalk.bold('\n  SOUL.md:'));
+              console.log(chalk.dim('  ─────────────────────────────────'));
+              const lines = soul.getContent().split('\n');
+              for (const line of lines.slice(0, 20)) {
+                console.log(chalk.dim(`  ${line}`));
+              }
+              if (lines.length > 20) {
+                console.log(chalk.dim(`  ... +${lines.length - 20} lines`));
+              }
+              console.log('');
+            } else {
+              console.log(chalk.dim(`  No SOUL.md found in ${current.workingDirectory}`));
+              console.log(chalk.dim('  Usage: /soul init    Create a default SOUL.md'));
+              console.log(chalk.dim('  Usage: /soul reload  Reload SOUL.md from disk'));
+            }
+            continue;
+          }
+          if (result.content === 'init') {
+            const created = await soul.init();
+            if (created) {
+              rebuildAgent();
+              console.log(chalk.green(`  SOUL.md created at ${soul.filePath}`));
+              console.log(chalk.dim('  Edit it to customize your agent\'s persona and tone.'));
+            } else {
+              console.log(chalk.dim(`  SOUL.md already exists at ${soul.filePath}`));
+            }
+            continue;
+          }
+          if (result.content === 'reload') {
+            await soul.reload();
+            rebuildAgent();
+            if (soul.isLoaded) {
+              console.log(chalk.green('  SOUL.md reloaded.'));
+            } else {
+              console.log(chalk.dim('  SOUL.md not found or empty.'));
+            }
+            continue;
+          }
+          console.log(chalk.dim('  Usage: /soul          Show current soul'));
+          console.log(chalk.dim('  Usage: /soul init     Create default SOUL.md'));
+          console.log(chalk.dim('  Usage: /soul reload   Reload from disk'));
+          continue;
+        }
+
         case 'message': {
           if (!result.content) continue;
 
@@ -267,7 +325,7 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
   }
 }
 
-function printConfig(config: MutableConfig, memory: MemoryManager): void {
+function printConfig(config: MutableConfig, memory: MemoryManager, soul?: SoulLoader): void {
   console.log(chalk.bold('\n  Current Configuration:'));
   console.log(chalk.dim('  ─────────────────────────────────'));
   console.log(`  Provider:     ${chalk.white(config.providerId)}`);
@@ -280,6 +338,7 @@ function printConfig(config: MutableConfig, memory: MemoryManager): void {
   console.log(`  Temperature:  ${chalk.white(String(config.temperature))}`);
   console.log(`  System:       ${chalk.white(config.systemPrompt ?? '(none)')}`);
   console.log(`  Working Dir:  ${chalk.white(config.workingDirectory)}`);
+  console.log(`  Soul:         ${chalk.white(soul?.isLoaded ? 'loaded' : '(none)')}`);
   console.log(`  Memory:       ${chalk.white(`${memory.list().length} entries`)}`);
   console.log('');
 }
@@ -307,5 +366,10 @@ function printHelp(): void {
   console.log('  /forget <keyword>   Remove matching memories');
   console.log('  /forget all         Clear all memories');
   console.log('  /compact            Reset conversation (keep memory)');
+  console.log('');
+  console.log(chalk.bold('  Persona'));
+  console.log('  /soul               Show current SOUL.md');
+  console.log('  /soul init          Create default SOUL.md');
+  console.log('  /soul reload        Reload SOUL.md from disk');
   console.log('');
 }

@@ -1,10 +1,15 @@
 export type AuthType =
+  | 'no-auth'
   | 'api-key'
   | 'oauth'
   | 'azure-ad'
   | 'aws-iam'
   | 'gcp-service-account'
   | 'credential-file';
+
+export interface NoAuth {
+  readonly type: 'no-auth';
+}
 
 export interface ApiKeyAuth {
   readonly type: 'api-key';
@@ -52,6 +57,7 @@ export interface CredentialFileAuth {
 }
 
 export type AuthConfig =
+  | NoAuth
   | ApiKeyAuth
   | OAuthAuth
   | AzureAdAuth

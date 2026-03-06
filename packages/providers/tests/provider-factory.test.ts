@@ -59,11 +59,11 @@ describe('ProviderFactory', () => {
         yield { type: 'done', response: { content: '', stopReason: 'end_turn', toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } } };
       }
     }
-    registerProvider('custom', CustomProvider);
-    const provider = createProvider({ ...CLAUDE_CONFIG, providerId: 'custom' });
+    registerProvider('test-custom', CustomProvider);
+    const provider = createProvider({ ...CLAUDE_CONFIG, providerId: 'test-custom' });
     expect(provider.providerId).toBe('custom');
     // cleanup
-    getProviderRegistry().unregister('custom');
+    getProviderRegistry().unregister('test-custom');
   });
 
   it('should expose the provider registry', () => {

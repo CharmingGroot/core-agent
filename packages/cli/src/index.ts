@@ -6,3 +6,4 @@ export { chatCommand } from './commands/chat.js';
 export { runCommand } from './commands/run.js';
 export type { RunCommandOptions } from './commands/run.js';
 export { MemoryManager } from './memory-manager.js';
+export { SoulLoader } from './soul-loader.js';

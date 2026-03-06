@@ -41,6 +41,7 @@ export type {
 
 export type {
   AuthType,
+  NoAuth,
   ApiKeyAuth,
   OAuthAuth,
   AzureAdAuth,
