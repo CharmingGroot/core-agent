@@ -117,11 +117,11 @@ export class GovernanceHandler {
 
   /** Record an action from the agent system */
   async recordAgentAction(entry: AuditEntry): Promise<void> {
+    const decision = entry.decision === 'blocked' ? 'denied' : entry.decision;
     this.appendAudit(
       entry.userId,
       entry.action,
-      entry.decision,
-      'toolName' in entry ? (entry as Record<string, unknown>)['toolName'] as string : undefined,
+      decision as 'allowed' | 'denied' | 'pending',
     );
     await this.policy.recordAction(entry);
   }
