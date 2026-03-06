@@ -1,0 +1,159 @@
+import type {
+  ILlmProvider,
+  ITool,
+  LlmResponse,
+  AgentConfig,
+  ToolDescription,
+} from '@cli-agent/core';
+import {
+  Registry,
+  RunContext,
+  EventBus,
+  AbortError,
+  createChildLogger,
+} from '@cli-agent/core';
+import { MessageManager } from './message-manager.js';
+import { ToolDispatcher } from './tool-dispatcher.js';
+import { PermissionManager, type PermissionHandler } from './permission.js';
+import type { Logger } from 'pino';
+
+export interface AgentLoopOptions {
+  provider: ILlmProvider;
+  toolRegistry: Registry<ITool>;
+  config: AgentConfig;
+  permissionHandler?: PermissionHandler;
+  eventBus?: EventBus;
+}
+
+export interface AgentResult {
+  readonly content: string;
+  readonly runId: string;
+  readonly iterations: number;
+  readonly aborted: boolean;
+}
+
+export class AgentLoop {
+  private readonly provider: ILlmProvider;
+  private readonly toolDispatcher: ToolDispatcher;
+  private readonly messageManager: MessageManager;
+  private readonly context: RunContext;
+  private readonly maxIterations: number;
+  private readonly logger: Logger;
+  private iterations = 0;
+
+  constructor(options: AgentLoopOptions) {
+    const eventBus = options.eventBus ?? new EventBus();
+    this.context = new RunContext(options.config, eventBus);
+    this.provider = options.provider;
+    this.messageManager = new MessageManager();
+    this.maxIterations = options.config.maxIterations;
+    this.logger = createChildLogger('agent-loop');
+
+    const permissionManager = new PermissionManager(options.permissionHandler);
+    this.toolDispatcher = new ToolDispatcher(options.toolRegistry, permissionManager);
+
+    if (options.config.systemPrompt) {
+      this.messageManager.addSystemMessage(options.config.systemPrompt);
+    }
+  }
+
+  get runId(): string {
+    return this.context.runId;
+  }
+
+  get eventBus(): EventBus {
+    return this.context.eventBus;
+  }
+
+  async run(userMessage: string): Promise<AgentResult> {
+    this.messageManager.addUserMessage(userMessage);
+    this.context.eventBus.emit('agent:start', { runId: this.context.runId });
+    this.iterations = 0;
+
+    try {
+      let lastContent = '';
+
+      while (this.iterations < this.maxIterations) {
+        if (this.context.isAborted) {
+          throw new AbortError('Agent loop aborted');
+        }
+
+        this.iterations++;
+        this.logger.debug({ iteration: this.iterations }, 'Starting iteration');
+
+        const toolDescriptions = this.getToolDescriptions();
+        const messages = this.messageManager.getMessages();
+
+        this.context.eventBus.emit('llm:request', {
+          runId: this.context.runId,
+          messages,
+        });
+
+        const response = await this.provider.chat(messages, toolDescriptions);
+
+        this.context.eventBus.emit('llm:response', {
+          runId: this.context.runId,
+          response,
+        });
+
+        lastContent = response.content;
+
+        if (response.stopReason === 'end_turn' || response.toolCalls.length === 0) {
+          this.messageManager.addAssistantMessage(response.content);
+          break;
+        }
+
+        // Tool use flow
+        this.messageManager.addAssistantMessage(response.content, response.toolCalls);
+        const results = await this.toolDispatcher.dispatchAll(
+          response.toolCalls,
+          this.context
+        );
+        this.messageManager.addToolResults(results);
+      }
+
+      const aborted = this.context.isAborted;
+      this.context.eventBus.emit('agent:end', {
+        runId: this.context.runId,
+        reason: aborted ? 'aborted' : 'complete',
+      });
+
+      return {
+        content: lastContent,
+        runId: this.context.runId,
+        iterations: this.iterations,
+        aborted,
+      };
+    } catch (error) {
+      this.context.eventBus.emit('agent:error', {
+        runId: this.context.runId,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      throw error;
+    }
+  }
+
+  abort(reason?: string): void {
+    this.context.abort(reason);
+  }
+
+  getContext(): RunContext {
+    return this.context;
+  }
+
+  private getToolDescriptions(): ToolDescription[] {
+    const tools = this.context.config.sandbox
+      ? [...this.getRegisteredToolDescriptions()]
+      : this.getRegisteredToolDescriptions();
+    return tools;
+  }
+
+  private getRegisteredToolDescriptions(): ToolDescription[] {
+    const descriptions: ToolDescription[] = [];
+    const tools = this.toolDispatcher['toolRegistry'].getAll();
+    for (const [, tool] of tools) {
+      descriptions.push(tool.describe());
+    }
+    return descriptions;
+  }
+}

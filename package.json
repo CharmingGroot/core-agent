@@ -1,0 +1,15 @@
+{
+  "name": "cli-agent-core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "CLI Agent Core - Interactive CLI agent with multi-LLM support",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "eslint 'packages/*/src/**/*.ts'",
+    "clean": "pnpm -r clean"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
