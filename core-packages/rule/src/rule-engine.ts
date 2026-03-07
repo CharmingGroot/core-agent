@@ -42,7 +42,7 @@ export class RuleEngine {
     const results: RuleResult[] = [];
     let blocked = false;
     let blockReason: string | undefined;
-    const mergedModifications: Record<string, unknown> = {};
+    const mergedModifications: Record<string, unknown> = Object.create(null);
 
     for (const rule of preRules) {
       const result = await rule.evaluate(context);
@@ -54,7 +54,10 @@ export class RuleEngine {
       }
 
       if (result.modifications) {
-        Object.assign(mergedModifications, result.modifications);
+        for (const [key, value] of Object.entries(result.modifications)) {
+          if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+          mergedModifications[key] = value;
+        }
       }
     }
 

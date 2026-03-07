@@ -17,6 +17,7 @@ function createWindow(): BrowserWindow {
       preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
     backgroundColor: '#1a1a2e',
   });
