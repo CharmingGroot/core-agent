@@ -1,6 +1,6 @@
 import { readdir, readFile, access } from 'node:fs/promises';
 import { watch as fsWatch, type FSWatcher } from 'node:fs';
-import { join, extname, basename } from 'node:path';
+import { join, extname } from 'node:path';
 import type { ISkill, ISkillRegistry } from '@core/types';
 import { parseSkillMd } from './skill-parser.js';
 
@@ -111,13 +111,13 @@ export class SkillLoader {
       );
     };
 
-    watcher = fsWatch(this.skillsDir, (eventType, rawFileName) => {
+    watcher = fsWatch(this.skillsDir, (_eventType, rawFileName) => {
       /* On some platforms rawFileName may be null */
       if (rawFileName === null) {
         return;
       }
 
-      const fileName = typeof rawFileName === 'string' ? rawFileName : rawFileName.toString();
+      const fileName = String(rawFileName);
 
       if (!fileName.endsWith(SKILL_FILE_EXTENSION)) {
         return;

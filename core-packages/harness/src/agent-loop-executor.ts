@@ -116,7 +116,7 @@ export class AgentLoopExecutor implements ISubAgentExecutor {
     }
 
     const allTools = this.config.toolRegistry.getAll();
-    const toolDescriptions = allTools.map((tool) => ({
+    const toolDescriptions = [...allTools.values()].map((tool) => ({
       name: tool.name,
       description: tool.describe().description,
       parameters: [],
@@ -127,9 +127,9 @@ export class AgentLoopExecutor implements ISubAgentExecutor {
     const allowedNames = new Set(allowedDescriptions.map((d) => d.name));
 
     const filtered = new Registry<ITool>('Tool');
-    for (const tool of allTools) {
+    for (const [, tool] of allTools) {
       if (allowedNames.has(tool.name)) {
-        filtered.register(tool);
+        filtered.register(tool.name, tool);
       }
     }
 
