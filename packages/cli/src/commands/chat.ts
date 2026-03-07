@@ -64,7 +64,7 @@ function createAgent(
   toolRegistry: ReturnType<typeof createToolRegistry>,
 ): AgentLoop {
   const provider = createProvider(config.provider);
-  return new AgentLoop({ provider, toolRegistry, config, eventBus });
+  return new AgentLoop({ provider, toolRegistry, config, eventBus, streaming: true });
 }
 
 export async function chatCommand(config: AgentConfig): Promise<void> {
@@ -330,7 +330,11 @@ export async function chatCommand(config: AgentConfig): Promise<void> {
 
           try {
             const response = await agent.run(result.content);
-            renderer.renderAssistantMessage(response.content);
+            // Streaming already wrote content to stdout via llm:stream events;
+            // only render if the response had no streamed output (tool-only turns)
+            if (response.content && response.iterations <= 1) {
+              console.log(''); // newline after streamed output
+            }
           } catch (error) {
             renderer.renderError(
               error instanceof Error ? error.message : String(error)

@@ -44,6 +44,7 @@ export class CliRenderer {
   private unsubscribers: Array<() => void> = [];
   private toolStartTimes = new Map<string, number>();
   private iterationCount = 0;
+  private streamedChunks = 0;
   private totalInputTokens = 0;
   private totalOutputTokens = 0;
 
@@ -57,6 +58,7 @@ export class CliRenderer {
         this.iterationCount = 0;
         this.totalInputTokens = 0;
         this.totalOutputTokens = 0;
+        this.streamedChunks = 0;
         console.log(chalk.dim(`\n${'─'.repeat(BOX_WIDTH)}`));
         console.log(chalk.dim(`  Run: ${runId.slice(0, 8)}...`));
         console.log(chalk.dim(`${'─'.repeat(BOX_WIDTH)}`));
@@ -105,6 +107,10 @@ export class CliRenderer {
 
     this.unsubscribers.push(
       this.eventBus.on('llm:response', ({ response }) => {
+        if (this.streamedChunks > 0) {
+          process.stdout.write('\n');
+          this.streamedChunks = 0;
+        }
         this.totalInputTokens += response.usage.inputTokens;
         this.totalOutputTokens += response.usage.outputTokens;
 
@@ -130,6 +136,7 @@ export class CliRenderer {
 
     this.unsubscribers.push(
       this.eventBus.on('llm:stream', ({ chunk }) => {
+        this.streamedChunks++;
         process.stdout.write(chunk);
       })
     );
