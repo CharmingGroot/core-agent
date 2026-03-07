@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import type { ToolDescription, ToolResult, JsonObject } from '@cli-agent/core';
 import type { RunContext } from '@cli-agent/core';
 import { BaseTool } from './base-tool.js';
@@ -31,7 +30,10 @@ export class FileReadTool extends BaseTool {
 
     const rawEncoding = params['encoding'];
     const encoding = (typeof rawEncoding === 'string' ? rawEncoding : 'utf-8');
-    const absolutePath = resolve(context.workingDirectory, filePath);
+    const absolutePath = this.resolveSafePath(context.workingDirectory, filePath);
+    if (!absolutePath) {
+      return this.failure('Path traversal denied: path escapes working directory');
+    }
 
     try {
       const content = await readFile(absolutePath, { encoding: encoding as BufferEncoding });

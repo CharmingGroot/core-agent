@@ -57,4 +57,16 @@ describe('FileReadTool', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('Failed to read file');
   });
+
+  it('should reject path traversal with ../', async () => {
+    const result = await tool.execute({ path: '../../etc/passwd' }, context);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Path traversal denied');
+  });
+
+  it('should reject absolute path outside working directory', async () => {
+    const result = await tool.execute({ path: '/etc/passwd' }, context);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Path traversal denied');
+  });
 });

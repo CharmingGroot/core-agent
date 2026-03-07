@@ -79,7 +79,7 @@ function sanitizeForIpc(obj: unknown): Record<string, unknown> {
   try {
     return JSON.parse(JSON.stringify(obj, (_key, value) => {
       if (value instanceof Error) {
-        return { message: value.message, name: value.name, stack: value.stack };
+        return { message: value.message, name: value.name };
       }
       return value;
     }));

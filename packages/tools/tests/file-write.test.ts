@@ -64,4 +64,10 @@ describe('FileWriteTool', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('content');
   });
+
+  it('should reject path traversal with ../', async () => {
+    const result = await tool.execute({ path: '../../tmp/evil.txt', content: 'bad' }, context);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Path traversal denied');
+  });
 });

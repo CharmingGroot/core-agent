@@ -42,9 +42,16 @@ export class ContentSearchTool extends BaseTool {
     const rawGlob = params['glob'];
     const globPattern = typeof rawGlob === 'string' ? rawGlob : '**/*';
     const rawPath = params['path'];
-    const searchDir = typeof rawPath === 'string'
-      ? resolve(context.workingDirectory, rawPath)
-      : context.workingDirectory;
+    let searchDir: string;
+    if (typeof rawPath === 'string') {
+      const resolved = this.resolveSafePath(context.workingDirectory, rawPath);
+      if (!resolved) {
+        return this.failure('Path traversal denied: path escapes working directory');
+      }
+      searchDir = resolved;
+    } else {
+      searchDir = context.workingDirectory;
+    }
     const caseInsensitive = params['case_insensitive'] === true;
     const rawMax = params['max_results'];
     const maxResults = typeof rawMax === 'number' && rawMax > 0 ? rawMax : MAX_RESULTS;

@@ -111,4 +111,13 @@ describe('FileEditTool', () => {
   it('should require permission', () => {
     expect(tool.requiresPermission).toBe(true);
   });
+
+  it('should reject path traversal with ../', async () => {
+    const result = await tool.execute(
+      { path: '../../etc/shadow', old_string: 'a', new_string: 'b' },
+      context
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Path traversal denied');
+  });
 });

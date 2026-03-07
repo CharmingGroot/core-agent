@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from 'node:fs/promises';
-import { resolve, dirname } from 'node:path';
+import { dirname } from 'node:path';
 import type { ToolDescription, ToolResult, JsonObject } from '@cli-agent/core';
 import type { RunContext } from '@cli-agent/core';
 import { BaseTool } from './base-tool.js';
@@ -37,7 +37,10 @@ export class FileWriteTool extends BaseTool {
 
     const rawEncoding = params['encoding'];
     const encoding = (typeof rawEncoding === 'string' ? rawEncoding : 'utf-8');
-    const absolutePath = resolve(context.workingDirectory, filePath);
+    const absolutePath = this.resolveSafePath(context.workingDirectory, filePath);
+    if (!absolutePath) {
+      return this.failure('Path traversal denied: path escapes working directory');
+    }
 
     try {
       await mkdir(dirname(absolutePath), { recursive: true });

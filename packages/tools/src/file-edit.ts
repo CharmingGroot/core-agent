@@ -1,5 +1,4 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import type { ToolDescription, ToolResult, JsonObject } from '@cli-agent/core';
 import type { RunContext } from '@cli-agent/core';
@@ -45,7 +44,10 @@ export class FileEditTool extends BaseTool {
     }
 
     const replaceAll = params['replace_all'] === true;
-    const absolutePath = resolve(context.workingDirectory, filePath);
+    const absolutePath = this.resolveSafePath(context.workingDirectory, filePath);
+    if (!absolutePath) {
+      return this.failure('Path traversal denied: path escapes working directory');
+    }
 
     if (!existsSync(absolutePath)) {
       return this.failure(`File not found: ${absolutePath}`);

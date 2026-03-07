@@ -23,10 +23,22 @@ function createWindow(): BrowserWindow {
 
   registerIpcHandlers(window);
 
+  // Prevent navigation to external URLs
+  window.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file://')) {
+      event.preventDefault();
+    }
+  });
+
+  // Prevent opening new windows
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   const htmlPath = join(__dirname, '..', 'renderer', 'index.html');
   void window.loadFile(htmlPath);
 
-  window.webContents.openDevTools();
+  if (process.env['NODE_ENV'] === 'development') {
+    window.webContents.openDevTools();
+  }
 
   window.on('closed', () => {
     removeIpcHandlers();

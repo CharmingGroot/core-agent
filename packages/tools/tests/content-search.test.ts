@@ -88,4 +88,10 @@ describe('ContentSearchTool', () => {
   it('should not require permission', () => {
     expect(tool.requiresPermission).toBe(false);
   });
+
+  it('should reject path traversal in search directory', async () => {
+    const result = await tool.execute({ pattern: 'hello', path: '../../' }, context);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Path traversal denied');
+  });
 });
