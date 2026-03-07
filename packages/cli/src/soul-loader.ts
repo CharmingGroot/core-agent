@@ -43,7 +43,8 @@ export class SoulLoader {
         return;
       }
       this.content = await readFile(this.soulPath, 'utf-8');
-    } catch {
+    } catch (error) {
+      console.error('[soul] Failed to load soul file:', error instanceof Error ? error.message : String(error));
       this.content = '';
     }
   }

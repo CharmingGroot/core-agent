@@ -49,6 +49,11 @@ async function handleConnect(
 ): Promise<void> {
   const transport = parts[1]?.toLowerCase();
 
+  if (!transport) {
+    console.log(chalk.red('  Missing transport type. Usage: /mcp connect stdio|sse ...'));
+    return;
+  }
+
   if (transport === 'stdio') {
     const name = parts[2];
     const command = parts[3];

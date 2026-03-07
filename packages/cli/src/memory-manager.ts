@@ -29,7 +29,8 @@ export class MemoryManager {
         .split('\n')
         .filter((line) => line.startsWith('- '))
         .map((line) => line.slice(2).trim());
-    } catch {
+    } catch (error) {
+      console.error('[memory] Failed to load memory file:', error instanceof Error ? error.message : String(error));
       this.entries = [];
     }
   }
