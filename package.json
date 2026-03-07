@@ -7,10 +7,13 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint 'packages/*/src/**/*.ts'",
-    "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
+    "test:e2e": "pnpx vitest run --config tests/e2e/vitest.config.ts",
     "clean": "pnpm -r clean"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron", "esbuild"]
   }
 }
