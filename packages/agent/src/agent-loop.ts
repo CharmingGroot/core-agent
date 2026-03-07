@@ -86,6 +86,11 @@ export class AgentLoop {
         this.iterations++;
         this.logger.debug({ iteration: this.iterations }, 'Starting iteration');
 
+        const compressed = this.messageManager.compressIfNeeded();
+        if (compressed > 0) {
+          this.logger.info({ compressed }, 'History compressed');
+        }
+
         const toolDescriptions = this.getToolDescriptions();
         const messages = this.messageManager.getMessages();
 

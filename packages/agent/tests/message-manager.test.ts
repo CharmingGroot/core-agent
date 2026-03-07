@@ -82,6 +82,48 @@ describe('MessageManager', () => {
     expect(manager.messageCount).toBe(0);
   });
 
+  it('should not compress when under budget', () => {
+    manager.addSystemMessage('system');
+    manager.addUserMessage('hello');
+    manager.addAssistantMessage('hi');
+    const compressed = manager.compressIfNeeded();
+    expect(compressed).toBe(0);
+    expect(manager.messageCount).toBe(3);
+  });
+
+  it('should compress when over budget', () => {
+    // Use a manager with very low token limit to force compression
+    const small = new MessageManager(50);
+    small.addSystemMessage('system');
+    // Add many messages to exceed 50 tokens
+    for (let i = 0; i < 20; i++) {
+      small.addUserMessage(`User message number ${i} with some extra content to add tokens`);
+      small.addAssistantMessage(`Response number ${i} with detailed explanation text`);
+    }
+    const before = small.messageCount;
+    const compressed = small.compressIfNeeded();
+    expect(compressed).toBeGreaterThan(0);
+    expect(small.messageCount).toBeLessThan(before);
+    // System message preserved
+    const msgs = small.getMessages();
+    expect(msgs[0]?.role).toBe('system');
+    // Summary message present
+    expect(msgs[1]?.content).toContain('Conversation summary');
+  });
+
+  it('should preserve system messages during compression', () => {
+    const small = new MessageManager(30);
+    small.addSystemMessage('You are helpful.');
+    for (let i = 0; i < 15; i++) {
+      small.addUserMessage(`msg ${i} ${'x'.repeat(50)}`);
+      small.addAssistantMessage(`reply ${i} ${'y'.repeat(50)}`);
+    }
+    small.compressIfNeeded();
+    const msgs = small.getMessages();
+    expect(msgs[0]?.role).toBe('system');
+    expect(msgs[0]?.content).toBe('You are helpful.');
+  });
+
   it('should return a copy of messages', () => {
     manager.addUserMessage('hello');
     const msgs = manager.getMessages();
