@@ -1,4 +1,4 @@
-import type { ITool } from '@cli-agent/core';
+import type { ITool, EventName, EventPayload } from '@cli-agent/core';
 import { Registry, createChildLogger } from '@cli-agent/core';
 import type { EventBus } from '@cli-agent/core';
 import { McpClient } from './mcp-client.js';
@@ -175,9 +175,9 @@ export class McpManager {
     this.registeredTools.delete(serverName);
   }
 
-  private emitEvent(event: string, data: Record<string, unknown>): void {
+  private emitEvent<K extends EventName>(event: K, payload: EventPayload<K>): void {
     if (this.eventBus) {
-      this.eventBus.emit(event, data);
+      this.eventBus.emit(event, payload);
     }
   }
 }

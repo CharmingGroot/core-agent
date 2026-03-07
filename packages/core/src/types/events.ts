@@ -14,6 +14,9 @@ export interface AgentEvents {
   'tool:permission': { runId: string; toolName: string };
   'sandbox:execute': { runId: string; language: string };
   'sandbox:result': { runId: string; result: ExecutionResult };
+  'mcp:connected': { server: string; toolCount: number };
+  'mcp:disconnected': { server: string };
+  'mcp:tools_changed': { server: string; tools: readonly string[] };
 }
 
 export type EventName = keyof AgentEvents;
