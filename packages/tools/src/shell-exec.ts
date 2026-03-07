@@ -26,12 +26,13 @@ export class ShellExecTool extends BaseTool {
   }
 
   async run(params: JsonObject, context: RunContext): Promise<ToolResult> {
-    const command = params['command'] as string;
-    if (!command) {
-      return this.failure('Missing required parameter: command');
+    const command = params['command'];
+    if (!command || typeof command !== 'string') {
+      return this.failure('Missing or invalid required parameter: command (expected string)');
     }
 
-    const timeoutMs = (params['timeoutMs'] as number) ?? DEFAULT_TIMEOUT_MS;
+    const rawTimeout = params['timeoutMs'];
+    const timeoutMs = (typeof rawTimeout === 'number' ? rawTimeout : DEFAULT_TIMEOUT_MS);
 
     return new Promise<ToolResult>((resolve) => {
       const child = exec(

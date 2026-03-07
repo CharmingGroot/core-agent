@@ -25,17 +25,18 @@ export class FileWriteTool extends BaseTool {
   }
 
   async run(params: JsonObject, context: RunContext): Promise<ToolResult> {
-    const filePath = params['path'] as string;
-    const content = params['content'] as string;
+    const filePath = params['path'];
+    const content = params['content'];
 
-    if (!filePath) {
-      return this.failure('Missing required parameter: path');
+    if (!filePath || typeof filePath !== 'string') {
+      return this.failure('Missing or invalid required parameter: path (expected string)');
     }
-    if (content === undefined || content === null) {
-      return this.failure('Missing required parameter: content');
+    if (content === undefined || content === null || typeof content !== 'string') {
+      return this.failure('Missing or invalid required parameter: content (expected string)');
     }
 
-    const encoding = (params['encoding'] as string) ?? 'utf-8';
+    const rawEncoding = params['encoding'];
+    const encoding = (typeof rawEncoding === 'string' ? rawEncoding : 'utf-8');
     const absolutePath = resolve(context.workingDirectory, filePath);
 
     try {

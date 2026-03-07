@@ -24,12 +24,13 @@ export class FileReadTool extends BaseTool {
   }
 
   async run(params: JsonObject, context: RunContext): Promise<ToolResult> {
-    const filePath = params['path'] as string;
-    if (!filePath) {
-      return this.failure('Missing required parameter: path');
+    const filePath = params['path'];
+    if (!filePath || typeof filePath !== 'string') {
+      return this.failure('Missing or invalid required parameter: path (expected string)');
     }
 
-    const encoding = (params['encoding'] as string) ?? 'utf-8';
+    const rawEncoding = params['encoding'];
+    const encoding = (typeof rawEncoding === 'string' ? rawEncoding : 'utf-8');
     const absolutePath = resolve(context.workingDirectory, filePath);
 
     try {

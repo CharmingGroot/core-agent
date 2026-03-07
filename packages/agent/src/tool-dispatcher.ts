@@ -44,10 +44,14 @@ export class ToolDispatcher {
     try {
       params = JSON.parse(toolCall.arguments) as JsonObject;
     } catch {
+      this.logger.warn(
+        { toolName: toolCall.name, arguments: toolCall.arguments.slice(0, 200) },
+        'Invalid JSON in tool arguments',
+      );
       return {
         success: false,
         output: '',
-        error: `Invalid tool arguments: ${toolCall.arguments}`,
+        error: `Invalid tool arguments for "${toolCall.name}": ${toolCall.arguments.slice(0, 100)}`,
       };
     }
 

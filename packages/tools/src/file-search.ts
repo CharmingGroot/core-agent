@@ -25,12 +25,13 @@ export class FileSearchTool extends BaseTool {
   }
 
   async run(params: JsonObject, context: RunContext): Promise<ToolResult> {
-    const pattern = params['pattern'] as string;
-    if (!pattern) {
-      return this.failure('Missing required parameter: pattern');
+    const pattern = params['pattern'];
+    if (!pattern || typeof pattern !== 'string') {
+      return this.failure('Missing or invalid required parameter: pattern (expected string)');
     }
 
-    const maxResults = (params['maxResults'] as number) ?? MAX_RESULTS;
+    const rawMax = params['maxResults'];
+    const maxResults = (typeof rawMax === 'number' ? rawMax : MAX_RESULTS);
 
     try {
       const files = await fg(pattern, {
