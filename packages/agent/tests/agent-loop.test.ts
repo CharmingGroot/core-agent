@@ -253,6 +253,99 @@ describe('AgentLoop', () => {
     expect(provider.chat).not.toHaveBeenCalled();
   });
 
+  it('should use systemPromptBuilder to rebuild prompt each iteration', async () => {
+    let buildCount = 0;
+    const provider = createMockProvider([
+      {
+        content: 'Calling tool',
+        stopReason: 'tool_use',
+        toolCalls: [{ id: 'tc-1', name: 'file_read', arguments: '{}' }],
+        usage: { inputTokens: 10, outputTokens: 10 },
+      },
+      {
+        content: 'Done',
+        stopReason: 'end_turn',
+        toolCalls: [],
+        usage: { inputTokens: 10, outputTokens: 5 },
+      },
+    ]);
+
+    const toolRegistry = new Registry<ITool>('Tool');
+    toolRegistry.register('file_read', createMockTool('file_read'));
+
+    const agent = new AgentLoop({
+      provider,
+      toolRegistry,
+      config: { ...TEST_CONFIG, systemPrompt: undefined },
+      systemPromptBuilder: () => {
+        buildCount++;
+        return `Dynamic prompt v${buildCount}`;
+      },
+    });
+
+    await agent.run('test');
+    // Builder called once per iteration (2 iterations)
+    expect(buildCount).toBe(2);
+
+    // Last call should have the latest prompt
+    const lastCall = (provider.chat as ReturnType<typeof vi.fn>).mock.calls[1];
+    const messages = lastCall[0] as Message[];
+    expect(messages[0]?.role).toBe('system');
+    expect(messages[0]?.content).toBe('Dynamic prompt v2');
+  });
+
+  it('should support async systemPromptBuilder', async () => {
+    const provider = createMockProvider([
+      {
+        content: 'Hi',
+        stopReason: 'end_turn',
+        toolCalls: [],
+        usage: { inputTokens: 10, outputTokens: 5 },
+      },
+    ]);
+
+    const toolRegistry = new Registry<ITool>('Tool');
+    const agent = new AgentLoop({
+      provider,
+      toolRegistry,
+      config: { ...TEST_CONFIG, systemPrompt: undefined },
+      systemPromptBuilder: async () => {
+        return 'Async prompt';
+      },
+    });
+
+    await agent.run('Hello');
+    const chatCall = (provider.chat as ReturnType<typeof vi.fn>).mock.calls[0];
+    const messages = chatCall[0] as Message[];
+    expect(messages[0]?.role).toBe('system');
+    expect(messages[0]?.content).toBe('Async prompt');
+  });
+
+  it('should prefer systemPromptBuilder over static systemPrompt', async () => {
+    const provider = createMockProvider([
+      {
+        content: 'Hi',
+        stopReason: 'end_turn',
+        toolCalls: [],
+        usage: { inputTokens: 10, outputTokens: 5 },
+      },
+    ]);
+
+    const toolRegistry = new Registry<ITool>('Tool');
+    const agent = new AgentLoop({
+      provider,
+      toolRegistry,
+      config: TEST_CONFIG, // has systemPrompt: 'You are a test agent.'
+      systemPromptBuilder: () => 'Builder wins',
+    });
+
+    await agent.run('Hello');
+    const chatCall = (provider.chat as ReturnType<typeof vi.fn>).mock.calls[0];
+    const messages = chatCall[0] as Message[];
+    expect(messages[0]?.role).toBe('system');
+    expect(messages[0]?.content).toBe('Builder wins');
+  });
+
   it('should include system prompt in messages', async () => {
     const provider = createMockProvider([
       {

@@ -124,6 +124,26 @@ describe('MessageManager', () => {
     expect(msgs[0]?.content).toBe('You are helpful.');
   });
 
+  it('should replace existing system message with setSystemMessage', () => {
+    manager.addSystemMessage('Original prompt');
+    manager.addUserMessage('hello');
+    manager.setSystemMessage('Updated prompt');
+    const msgs = manager.getMessages();
+    expect(msgs[0]?.role).toBe('system');
+    expect(msgs[0]?.content).toBe('Updated prompt');
+    expect(manager.messageCount).toBe(2); // no extra message added
+  });
+
+  it('should insert system message at position 0 if none exists', () => {
+    manager.addUserMessage('hello');
+    manager.setSystemMessage('Injected prompt');
+    const msgs = manager.getMessages();
+    expect(msgs[0]?.role).toBe('system');
+    expect(msgs[0]?.content).toBe('Injected prompt');
+    expect(msgs[1]?.role).toBe('user');
+    expect(manager.messageCount).toBe(2);
+  });
+
   it('should return a copy of messages', () => {
     manager.addUserMessage('hello');
     const msgs = manager.getMessages();

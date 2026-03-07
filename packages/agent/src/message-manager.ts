@@ -30,6 +30,19 @@ export class MessageManager {
     this.messages.push({ role: 'system', content });
   }
 
+  /**
+   * Replace the first system message, or insert one at position 0.
+   * Used by AgentLoop when a dynamic systemPromptBuilder is provided.
+   */
+  setSystemMessage(content: string): void {
+    const idx = this.messages.findIndex(m => m.role === 'system');
+    if (idx >= 0) {
+      this.messages[idx] = { role: 'system', content };
+    } else {
+      this.messages.unshift({ role: 'system', content });
+    }
+  }
+
   addUserMessage(content: string): void {
     this.messages.push({ role: 'user', content });
   }

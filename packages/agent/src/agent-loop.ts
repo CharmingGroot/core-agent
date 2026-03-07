@@ -4,7 +4,6 @@ import type {
   AgentConfig,
   ToolDescription,
   LlmResponse,
-  StreamEvent,
   Message,
   AgentLogger,
 } from '@cli-agent/core';
@@ -19,6 +18,14 @@ import { MessageManager } from './message-manager.js';
 import { ToolDispatcher } from './tool-dispatcher.js';
 import { PermissionManager, type PermissionHandler } from './permission.js';
 
+/**
+ * Callback that builds/rebuilds the system prompt dynamically.
+ * Called before each LLM iteration so the prompt can reflect
+ * current state (open files, cwd, etc.) without a hard dependency
+ * on @core/context-engine.
+ */
+export type SystemPromptBuilder = (context: RunContext) => string | Promise<string>;
+
 export interface AgentLoopOptions {
   provider: ILlmProvider;
   toolRegistry: Registry<ITool>;
@@ -26,6 +33,8 @@ export interface AgentLoopOptions {
   permissionHandler?: PermissionHandler;
   eventBus?: EventBus;
   streaming?: boolean;
+  /** Dynamic system prompt builder — takes precedence over config.systemPrompt */
+  systemPromptBuilder?: SystemPromptBuilder;
 }
 
 export interface AgentResult {
@@ -43,6 +52,7 @@ export class AgentLoop {
   private readonly maxIterations: number;
   private readonly logger: AgentLogger;
   private readonly streaming: boolean;
+  private readonly systemPromptBuilder?: SystemPromptBuilder;
   private iterations = 0;
 
   constructor(options: AgentLoopOptions) {
@@ -53,11 +63,13 @@ export class AgentLoop {
     this.maxIterations = options.config.maxIterations;
     this.logger = createChildLogger('agent-loop');
     this.streaming = options.streaming ?? false;
+    this.systemPromptBuilder = options.systemPromptBuilder;
 
     const permissionManager = new PermissionManager(options.permissionHandler);
     this.toolDispatcher = new ToolDispatcher(options.toolRegistry, permissionManager);
 
-    if (options.config.systemPrompt) {
+    // Static system prompt used only when no dynamic builder is provided
+    if (!this.systemPromptBuilder && options.config.systemPrompt) {
       this.messageManager.addSystemMessage(options.config.systemPrompt);
     }
   }
@@ -85,6 +97,12 @@ export class AgentLoop {
 
         this.iterations++;
         this.logger.debug({ iteration: this.iterations }, 'Starting iteration');
+
+        // Rebuild system prompt dynamically if builder is provided
+        if (this.systemPromptBuilder) {
+          const prompt = await this.systemPromptBuilder(this.context);
+          this.messageManager.setSystemMessage(prompt);
+        }
 
         const compressed = this.messageManager.compressIfNeeded();
         if (compressed > 0) {
