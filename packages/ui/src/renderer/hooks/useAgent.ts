@@ -8,10 +8,8 @@ declare global {
   }
 }
 
-let messageIdCounter = 0;
 function nextMessageId(): string {
-  messageIdCounter++;
-  return `msg-${messageIdCounter}-${Date.now()}`;
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export interface UseAgentReturn {
