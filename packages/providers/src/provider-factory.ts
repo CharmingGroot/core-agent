@@ -2,6 +2,7 @@ import type { ILlmProvider, ProviderConfig } from '@cli-agent/core';
 import { Registry, ProviderError } from '@cli-agent/core';
 import { ClaudeProvider } from './claude-provider.js';
 import { OpenAIProvider } from './openai-provider.js';
+import { RetryProvider } from './retry-provider.js';
 
 type ProviderConstructor = new (config: ProviderConfig) => ILlmProvider;
 
@@ -20,7 +21,8 @@ export function createProvider(config: ProviderConfig): ILlmProvider {
       `Unknown provider: '${config.providerId}'. Available: ${providerRegistry.getAllNames().join(', ')}`
     );
   }
-  return new Constructor(config);
+  const provider = new Constructor(config);
+  return new RetryProvider(provider);
 }
 
 export function registerProvider(

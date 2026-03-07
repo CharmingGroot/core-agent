@@ -6,4 +6,5 @@ export {
   registerProvider,
   getProviderRegistry,
 } from './provider-factory.js';
+export { RetryProvider, type RetryConfig } from './retry-provider.js';
 export { resolveAuth, extractToken } from './auth/index.js';
