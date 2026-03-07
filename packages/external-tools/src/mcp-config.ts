@@ -25,17 +25,30 @@ export class McpConfigStore {
     try {
       const data = await readFile(this.configPath, 'utf-8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed.servers)) {
-        this.configs = parsed.servers;
+      if (!Array.isArray(parsed.servers)) {
+        this.logger.warn({ path: this.configPath }, 'MCP config missing "servers" array, using empty list');
+        this.configs = [];
+        return [];
+      }
+      this.configs = parsed.servers.filter((s: unknown) => {
+        if (typeof s !== 'object' || s === null) return false;
+        const entry = s as Record<string, unknown>;
+        return typeof entry['name'] === 'string' && typeof entry['transport'] === 'string';
+      });
+      if (this.configs.length !== parsed.servers.length) {
+        this.logger.warn(
+          { total: parsed.servers.length, valid: this.configs.length },
+          'Some MCP server configs were invalid and skipped',
+        );
       }
       this.logger.info({ count: this.configs.length }, 'Loaded MCP configs');
       return this.configs;
     } catch (error) {
-      // File doesn't exist yet — that's fine
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.configs = [];
         return [];
       }
+      this.logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to load MCP config');
       throw error;
     }
   }

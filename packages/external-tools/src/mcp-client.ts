@@ -183,13 +183,19 @@ export class McpClient {
   private handleNotification(notification: JsonRpcNotification): void {
     if (notification.method === 'notifications/tools/list_changed') {
       this.logger.info({ server: this.config.name }, 'MCP tools changed, refreshing');
-      this.refreshTools()
-        .then((tools) => {
-          this.toolsChangedHandler?.(tools);
-        })
-        .catch((err) => {
-          this.logger.error({ error: String(err) }, 'Failed to refresh tools after change notification');
-        });
+      void this.handleToolsChanged();
+    }
+  }
+
+  private async handleToolsChanged(): Promise<void> {
+    try {
+      const tools = await this.refreshTools();
+      this.toolsChangedHandler?.(tools);
+    } catch (err) {
+      this.logger.error(
+        { server: this.config.name, error: err instanceof Error ? err.message : String(err) },
+        'Failed to refresh tools after change notification',
+      );
     }
   }
 }

@@ -57,15 +57,18 @@ export class SseTransport implements IMcpTransport {
     }
 
     this.isConnected = true;
-    this.readSseStream(response.body).catch((err) => {
+
+    // Wait for the endpoint event (server sends message endpoint URL)
+    // Start reading SSE stream first so we can receive the endpoint event
+    const streamDone = this.readSseStream(response.body).catch((err) => {
       if (this.isConnected) {
         this.logger.error({ error: String(err) }, 'SSE stream error');
         this.isConnected = false;
         this.rejectAllPending(err instanceof Error ? err : new Error(String(err)));
       }
     });
+    void streamDone;
 
-    // Wait for the endpoint event (server sends message endpoint URL)
     await this.waitForEndpoint();
   }
 
@@ -74,21 +77,26 @@ export class SseTransport implements IMcpTransport {
       throw new Error('SSE transport not ready — no message endpoint');
     }
 
-    return new Promise<JsonRpcResponse>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(request.id);
-        reject(new Error(`MCP request timed out: ${request.method} (id=${request.id})`));
-      }, REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      this.pending.delete(request.id);
+    }, REQUEST_TIMEOUT_MS);
 
+    return new Promise<JsonRpcResponse>((resolve, reject) => {
       this.pending.set(request.id, { resolve, reject, timer });
 
-      fetch(this.messageEndpoint!, {
+      void fetch(this.messageEndpoint!, {
         method: 'POST',
         headers: {
           ...this.headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+      }).then((res) => {
+        if (!res.ok) {
+          clearTimeout(timer);
+          this.pending.delete(request.id);
+          reject(new Error(`MCP POST failed: ${res.status} ${res.statusText}`));
+        }
       }).catch((err) => {
         clearTimeout(timer);
         this.pending.delete(request.id);
@@ -201,9 +209,17 @@ export class SseTransport implements IMcpTransport {
       return Promise.resolve(this.messageEndpoint);
     }
     return new Promise<string>((resolve, reject) => {
-      this.endpointResolve = resolve;
+      let settled = false;
+      this.endpointResolve = (url: string) => {
+        if (!settled) {
+          settled = true;
+          resolve(url);
+        }
+      };
       setTimeout(() => {
-        if (!this.messageEndpoint) {
+        if (!settled) {
+          settled = true;
+          this.endpointResolve = null;
           reject(new Error('Timeout waiting for SSE endpoint event'));
         }
       }, REQUEST_TIMEOUT_MS);
