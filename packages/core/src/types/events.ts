@@ -17,6 +17,7 @@ export interface AgentEvents {
   'mcp:connected': { server: string; toolCount: number };
   'mcp:disconnected': { server: string };
   'mcp:tools_changed': { server: string; tools: readonly string[] };
+  'context:assembled': { runId: string; usage: unknown; wasCompressed: boolean; toolCount: number };
 }
 
 export type EventName = keyof AgentEvents;

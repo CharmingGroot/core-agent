@@ -385,6 +385,92 @@ if (apiKey6) {
   }));
 }
 
+// ── Test 7: 스트리밍 응답 ──
+const apiKey7 = env.ANTHROPIC_API_KEY ?? env.OPENAI_API_KEY;
+if (apiKey7) {
+  const isAnthropic7 = Boolean(env.ANTHROPIC_API_KEY);
+  results.push(await runTest(`스트리밍 응답 (${isAnthropic7 ? 'Claude' : 'OpenAI'})`, async () => {
+    const testLog = [];
+    const providerConfig = isAnthropic7
+      ? { providerId: 'claude', model: 'claude-sonnet-4-20250514', auth: apiKeyAuth(apiKey7), maxTokens: 1024, temperature: 0 }
+      : { providerId: 'openai', model: 'gpt-4o-mini', auth: apiKeyAuth(apiKey7), maxTokens: 1024, temperature: 0 };
+    const provider = isAnthropic7 ? new ClaudeProvider(providerConfig) : new OpenAIProvider(providerConfig);
+    const eventBus = new EventBus();
+    attachEventLogger(eventBus, testLog);
+
+    const chunks = [];
+    eventBus.on('llm:stream', (p) => chunks.push(p.chunk));
+
+    const agent = new AgentLoop({
+      provider, toolRegistry: new Registry('Tool'),
+      config: buildConfig(providerConfig, 3), eventBus,
+      streaming: true,
+    });
+    const result = await agent.run('Count from 1 to 5, one number per line.');
+
+    printEventLog(testLog);
+    log(`\n   📊 결과:`);
+    log(`      content: "${result.content.slice(0, 300)}"`);
+    log(`      스트림 청크 수: ${chunks.length}`);
+    log(`      청크 미리보기: [${chunks.slice(0, 5).map(c => JSON.stringify(c)).join(', ')}${chunks.length > 5 ? ', ...' : ''}]`);
+    log(`      iterations: ${result.iterations}`);
+
+    if (chunks.length === 0) throw new Error('No stream chunks received');
+    if (!result.content.includes('1')) throw new Error('Expected numbers in response');
+  }));
+}
+
+// ── Test 8: Sub-Agent 실행 ──
+const apiKey8 = env.ANTHROPIC_API_KEY ?? env.OPENAI_API_KEY;
+if (apiKey8) {
+  const isAnthropic8 = Boolean(env.ANTHROPIC_API_KEY);
+  const { SubAgentTool } = await import(toURL(join(ROOT, 'packages/agent/dist/index.js')));
+  results.push(await runTest(`Sub-Agent 실행 (${isAnthropic8 ? 'Claude' : 'OpenAI'})`, async () => {
+    const testLog = [];
+    const providerConfig = isAnthropic8
+      ? { providerId: 'claude', model: 'claude-sonnet-4-20250514', auth: apiKeyAuth(apiKey8), maxTokens: 1024, temperature: 0 }
+      : { providerId: 'openai', model: 'gpt-4o-mini', auth: apiKeyAuth(apiKey8), maxTokens: 1024, temperature: 0 };
+    const provider = isAnthropic8 ? new ClaudeProvider(providerConfig) : new OpenAIProvider(providerConfig);
+
+    // Parent agent has a sub-agent tool
+    const childToolRegistry = createToolRegistry();
+    const subAgent = new SubAgentTool({
+      name: 'researcher',
+      description: 'A sub-agent that can read files and answer questions about them.',
+      provider,
+      toolRegistry: childToolRegistry,
+      systemPrompt: 'You are a helpful research assistant. Be concise.',
+      maxIterations: 5,
+    });
+
+    const parentToolRegistry = new Registry('Tool');
+    parentToolRegistry.register('researcher', subAgent);
+
+    const eventBus = new EventBus();
+    attachEventLogger(eventBus, testLog);
+
+    const agent = new AgentLoop({
+      provider, toolRegistry: parentToolRegistry,
+      config: {
+        ...buildConfig(providerConfig, 5),
+        systemPrompt: 'You have a "researcher" tool. Delegate tasks to it. Be concise.',
+      },
+      eventBus,
+    });
+    const result = await agent.run('Use the researcher to find out the project name from package.json.');
+
+    printEventLog(testLog);
+    log(`\n   📊 결과:`);
+    log(`      content: "${result.content.slice(0, 500)}"`);
+    log(`      iterations: ${result.iterations}`);
+
+    const toolNames = testLog.filter(e => e.event === 'tool:start').map(e => e.tool);
+    log(`      사용된 도구: [${toolNames.join(', ')}]`);
+
+    if (!toolNames.includes('researcher')) throw new Error('Sub-agent was not invoked');
+  }));
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 요약
 // ═══════════════════════════════════════════════════════════════════

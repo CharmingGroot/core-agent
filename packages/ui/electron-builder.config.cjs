@@ -21,7 +21,7 @@ module.exports = {
     '!dist/**/*.d.ts.map',
   ],
   extraMetadata: {
-    main: 'dist/main/main.js',
+    main: 'dist/main/main.cjs',
   },
   win: {
     target: [
