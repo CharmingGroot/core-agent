@@ -86,6 +86,30 @@ export class MessageManager {
     this.messages.length = 0;
   }
 
+  /** Serialize all messages to a JSON string for persistence. */
+  serialize(): string {
+    return JSON.stringify(this.messages);
+  }
+
+  /** Restore messages from a previously serialized JSON string. */
+  restore(json: string): void {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Invalid serialized messages: expected an array');
+    }
+    this.messages.length = 0;
+    for (const item of parsed) {
+      if (
+        typeof item === 'object' && item !== null &&
+        'role' in item && 'content' in item &&
+        typeof (item as Message).role === 'string' &&
+        typeof (item as Message).content === 'string'
+      ) {
+        this.messages.push(item as Message);
+      }
+    }
+  }
+
   /**
    * Compress history if it exceeds the token budget.
    * Keeps: system messages, last 2 user messages, last 3 assistant+tool pairs.

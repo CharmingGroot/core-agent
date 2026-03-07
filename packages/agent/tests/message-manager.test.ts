@@ -144,6 +144,46 @@ describe('MessageManager', () => {
     expect(manager.messageCount).toBe(2);
   });
 
+  it('should serialize and restore messages', () => {
+    manager.addSystemMessage('You are helpful.');
+    manager.addUserMessage('Hello');
+    manager.addAssistantMessage('Hi!', [
+      { id: 'tc-1', name: 'file_read', arguments: '{"path":"a.txt"}' },
+    ]);
+
+    const json = manager.serialize();
+    const restored = new MessageManager();
+    restored.restore(json);
+
+    expect(restored.messageCount).toBe(3);
+    const msgs = restored.getMessages();
+    expect(msgs[0]?.role).toBe('system');
+    expect(msgs[1]?.content).toBe('Hello');
+    expect(msgs[2]?.toolCalls?.[0]?.name).toBe('file_read');
+  });
+
+  it('should clear existing messages on restore', () => {
+    manager.addUserMessage('old');
+    manager.restore(JSON.stringify([{ role: 'user', content: 'new' }]));
+    expect(manager.messageCount).toBe(1);
+    expect(manager.getMessages()[0]?.content).toBe('new');
+  });
+
+  it('should throw on invalid serialized data', () => {
+    expect(() => manager.restore('"not an array"')).toThrow('expected an array');
+  });
+
+  it('should skip malformed entries during restore', () => {
+    const json = JSON.stringify([
+      { role: 'user', content: 'valid' },
+      { bad: 'entry' },
+      { role: 123, content: 'invalid role' },
+    ]);
+    manager.restore(json);
+    expect(manager.messageCount).toBe(1);
+    expect(manager.getMessages()[0]?.content).toBe('valid');
+  });
+
   it('should return a copy of messages', () => {
     manager.addUserMessage('hello');
     const msgs = manager.getMessages();
