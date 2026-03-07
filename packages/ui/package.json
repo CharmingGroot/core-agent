@@ -5,7 +5,7 @@
   "description": "CLI Agent Desktop - Electron UI for interactive agent sessions",
   "author": "CLI Agent Team",
   "type": "module",
-  "main": "./dist/main/main.js",
+  "main": "./dist/main/main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:main": "tsc -p tsconfig.json",
@@ -13,7 +13,7 @@
     "build:electron": "node scripts/build.mjs",
     "dist": "node scripts/build.mjs && electron-builder --config electron-builder.config.cjs",
     "test": "vitest run",
-    "dev": "electron ./dist/main/main.js",
+    "dev": "electron ./dist/main/main.cjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {

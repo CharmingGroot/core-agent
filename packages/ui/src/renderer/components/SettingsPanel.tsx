@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { AppConfig } from '../types.js';
 
 const PROVIDERS = [
@@ -21,201 +21,128 @@ export function SettingsPanel({ config, onSave, onBack }: SettingsPanelProps): R
 
   const handleSave = useCallback(() => {
     onSave(draft);
-    onBack();
-  }, [draft, onSave, onBack]);
+  }, [draft, onSave]);
+
+  const handleSelectDirectory = useCallback(() => {
+    if (!window.electronApi) return;
+    window.electronApi.selectDirectory();
+  }, []);
+
+  useEffect(() => {
+    if (!window.electronApi) return;
+    const unsub = window.electronApi.onDirectorySelected((path: string) => {
+      setDraft((prev) => ({ ...prev, workingDirectory: path }));
+    });
+    return unsub;
+  }, []);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <button onClick={onBack} style={styles.backButton}>
-          {'<'} Back
-        </button>
-        <h2 style={styles.title}>Settings</h2>
+    <>
+      <div className="side-panel-header">
+        <span className="side-panel-title">Settings</span>
+        <button className="btn btn-icon" onClick={onBack}>{'\u2715'}</button>
       </div>
+      <div className="side-panel-body">
+        <div className="form">
+          <div className="field">
+            <label className="field-label">Provider</label>
+            <select
+              className="field-select"
+              value={draft.providerId}
+              onChange={(e) => update('providerId', e.target.value)}
+            >
+              {PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
 
-      <div style={styles.form}>
-        <FieldGroup label="Provider">
-          <select
-            value={draft.providerId}
-            onChange={(e) => update('providerId', e.target.value)}
-            style={styles.select}
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </select>
-        </FieldGroup>
-
-        <FieldGroup label="Model">
-          <input
-            type="text"
-            value={draft.model}
-            onChange={(e) => update('model', e.target.value)}
-            placeholder="e.g. claude-sonnet-4-6"
-            style={styles.input}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="API Key">
-          <input
-            type="password"
-            value={draft.apiKey}
-            onChange={(e) => update('apiKey', e.target.value)}
-            placeholder="sk-..."
-            style={styles.input}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="Base URL (optional)">
-          <input
-            type="text"
-            value={draft.baseUrl ?? ''}
-            onChange={(e) => update('baseUrl', e.target.value || undefined)}
-            placeholder="https://api.example.com"
-            style={styles.input}
-          />
-        </FieldGroup>
-
-        <div style={styles.row}>
-          <FieldGroup label="Max Tokens">
+          <div className="field">
+            <label className="field-label">Model</label>
             <input
-              type="number"
-              value={draft.maxTokens}
-              onChange={(e) => update('maxTokens', parseInt(e.target.value, 10) || 4096)}
-              style={styles.input}
+              className="field-input"
+              type="text"
+              value={draft.model}
+              onChange={(e) => update('model', e.target.value)}
+              placeholder="e.g. claude-sonnet-4-6"
             />
-          </FieldGroup>
-          <FieldGroup label="Temperature">
+          </div>
+
+          <div className="field">
+            <label className="field-label">API Key</label>
             <input
-              type="number"
-              value={draft.temperature}
-              onChange={(e) => update('temperature', parseFloat(e.target.value) || 0.7)}
-              step="0.1"
-              min="0"
-              max="2"
-              style={styles.input}
+              className="field-input"
+              type="password"
+              value={draft.apiKey}
+              onChange={(e) => update('apiKey', e.target.value)}
+              placeholder="sk-..."
             />
-          </FieldGroup>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Base URL (optional)</label>
+            <input
+              className="field-input"
+              type="text"
+              value={draft.baseUrl ?? ''}
+              onChange={(e) => update('baseUrl', e.target.value || undefined)}
+              placeholder="https://api.example.com"
+            />
+          </div>
+
+          <div className="field-row">
+            <div className="field">
+              <label className="field-label">Max Tokens</label>
+              <input
+                className="field-input"
+                type="number"
+                value={draft.maxTokens}
+                onChange={(e) => update('maxTokens', parseInt(e.target.value, 10) || 4096)}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Temperature</label>
+              <input
+                className="field-input"
+                type="number"
+                value={draft.temperature}
+                onChange={(e) => update('temperature', parseFloat(e.target.value) || 0.7)}
+                step="0.1"
+                min="0"
+                max="2"
+              />
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="field-label">System Prompt (optional)</label>
+            <textarea
+              className="field-input field-textarea"
+              value={draft.systemPrompt ?? ''}
+              onChange={(e) => update('systemPrompt', e.target.value || undefined)}
+              placeholder="You are a helpful assistant..."
+              rows={3}
+            />
+          </div>
+
+          <div className="field">
+            <label className="field-label">Working Directory</label>
+            <div className="field-row">
+              <input
+                className="field-input"
+                type="text"
+                value={draft.workingDirectory}
+                onChange={(e) => update('workingDirectory', e.target.value)}
+              />
+              <button className="btn" onClick={handleSelectDirectory}>Browse</button>
+            </div>
+          </div>
+
+          <button className="btn btn-primary" onClick={handleSave} style={{ marginTop: 8 }}>
+            Save Settings
+          </button>
         </div>
-
-        <FieldGroup label="System Prompt (optional)">
-          <textarea
-            value={draft.systemPrompt ?? ''}
-            onChange={(e) => update('systemPrompt', e.target.value || undefined)}
-            placeholder="You are a helpful assistant..."
-            rows={3}
-            style={{ ...styles.input, resize: 'vertical' as const }}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="Working Directory">
-          <input
-            type="text"
-            value={draft.workingDirectory}
-            onChange={(e) => update('workingDirectory', e.target.value)}
-            style={styles.input}
-          />
-        </FieldGroup>
-
-        <button onClick={handleSave} style={styles.saveButton}>
-          Save Settings
-        </button>
       </div>
-    </div>
+    </>
   );
 }
-
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
-  return (
-    <div style={styles.fieldGroup}>
-      <label style={styles.label}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    height: '100%',
-    backgroundColor: '#0f172a',
-    color: '#e2e8f0',
-    overflowY: 'auto',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '16px',
-    borderBottom: '1px solid #1e293b',
-  },
-  backButton: {
-    background: 'none',
-    border: '1px solid #334155',
-    borderRadius: '6px',
-    color: '#94a3b8',
-    padding: '6px 12px',
-    cursor: 'pointer',
-    fontSize: '13px',
-  },
-  title: {
-    margin: 0,
-    fontSize: '18px',
-    fontWeight: 700,
-  },
-  form: {
-    padding: '16px',
-    maxWidth: '500px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  fieldGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    flex: 1,
-  },
-  label: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  input: {
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid #334155',
-    backgroundColor: '#1e293b',
-    color: '#e2e8f0',
-    fontSize: '14px',
-    fontFamily: "'Cascadia Code', 'Fira Code', monospace",
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box' as const,
-  },
-  select: {
-    padding: '8px 12px',
-    borderRadius: '6px',
-    border: '1px solid #334155',
-    backgroundColor: '#1e293b',
-    color: '#e2e8f0',
-    fontSize: '14px',
-    outline: 'none',
-  },
-  row: {
-    display: 'flex',
-    gap: '12px',
-  },
-  saveButton: {
-    padding: '10px 20px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontSize: '14px',
-    marginTop: '8px',
-  },
-};

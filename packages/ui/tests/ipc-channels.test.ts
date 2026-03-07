@@ -34,8 +34,8 @@ describe('IPC Channels', () => {
     expect(IPC_CHANNELS.CONFIG_VALUE).toBe('config:value');
   });
 
-  it('should have 15 total channels', () => {
-    expect(Object.keys(IPC_CHANNELS)).toHaveLength(15);
+  it('should have 18 total channels', () => {
+    expect(Object.keys(IPC_CHANNELS)).toHaveLength(18);
   });
 
   it('should have unique channel names', () => {

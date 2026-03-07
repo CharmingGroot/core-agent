@@ -33,11 +33,11 @@ describe('SettingsPanel', () => {
     expect(html).toContain('OpenAI');
   });
 
-  it('should render back button', () => {
+  it('should render close button', () => {
     const html = renderToString(
       <SettingsPanel config={DEFAULT_CONFIG} onSave={vi.fn()} onBack={vi.fn()} />
     );
-    expect(html).toContain('Back');
+    expect(html).toContain('btn-icon');
   });
 
   it('should render all configuration fields', () => {

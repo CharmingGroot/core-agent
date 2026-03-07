@@ -12,20 +12,21 @@ const WINDOW_CONFIG = {
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     ...WINDOW_CONFIG,
+    show: true,
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
     },
-    titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
   });
 
   registerIpcHandlers(window);
 
   const htmlPath = join(__dirname, '..', 'renderer', 'index.html');
-  window.loadFile(htmlPath);
+  void window.loadFile(htmlPath);
+
+  window.webContents.openDevTools();
 
   window.on('closed', () => {
     removeIpcHandlers();
@@ -42,6 +43,9 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch((error) => {
+  console.error('[main] Failed to initialize app:', error instanceof Error ? error.message : String(error));
+  app.quit();
 });
 
 app.on('window-all-closed', () => {

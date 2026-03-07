@@ -9,12 +9,15 @@ beforeEach(() => {
     electronApi: {
       sendMessage: vi.fn(),
       abort: vi.fn(),
+      resetChat: vi.fn(),
       getConfig: vi.fn(),
       setConfig: vi.fn(),
+      selectDirectory: vi.fn(),
       onAgentEvent: vi.fn(() => vi.fn()),
       onAgentResponse: vi.fn(() => vi.fn()),
       onAgentError: vi.fn(() => vi.fn()),
       onConfigValue: vi.fn(() => vi.fn()),
+      onDirectorySelected: vi.fn(() => vi.fn()),
       govGetState: vi.fn(),
       govSetMode: vi.fn(),
       govAddDomain: vi.fn(),
@@ -43,9 +46,9 @@ describe('App', () => {
     expect(html).toContain('Settings');
   });
 
-  it('should render clear button', () => {
+  it('should render new chat button', () => {
     const html = renderToString(<App />);
-    expect(html).toContain('Clear');
+    expect(html).toContain('New Chat');
   });
 
   it('should render governance button', () => {

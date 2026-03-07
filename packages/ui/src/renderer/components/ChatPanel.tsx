@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { ChatMessage, AppConfig } from '../types.js';
+import type { ChatMessage } from '../types.js';
 import { MessageBubble } from './MessageBubble.js';
 
 interface ChatPanelProps {
@@ -17,11 +17,19 @@ export function ChatPanel({
 }: ChatPanelProps): React.ReactElement {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  }, [input]);
 
   const handleSubmit = useCallback(() => {
     if (!input.trim() || isLoading) return;
@@ -37,153 +45,53 @@ export function ChatPanel({
   }, [handleSubmit]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.messagesArea}>
-        {messages.length === 0 && (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>{'>'}_</div>
-            <div style={styles.emptyTitle}>Chamelion</div>
-            <div style={styles.emptySubtitle}>
-              Send a message to start a conversation
+    <>
+      <div className="messages">
+        <div className="messages-inner">
+          {messages.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">{'>'}_</div>
+              <div className="empty-title">Chamelion</div>
+              <div className="empty-subtitle">Send a message to start a conversation</div>
             </div>
-          </div>
-        )}
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
-        {isLoading && (
-          <div style={styles.loadingIndicator}>
-            <span style={styles.loadingDot}>{'...'}</span> Thinking
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+          {isLoading && (
+            <div className="loading">
+              <span className="loading-dots">Thinking</span>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <div style={styles.inputArea}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isLoading ? 'Agent is working...' : 'Type a message... (Enter to send, Shift+Enter for newline)'}
-          disabled={isLoading}
-          rows={2}
-          style={styles.textarea}
-        />
-        <div style={styles.inputActions}>
+      <div className="input-area">
+        <div className="input-inner">
+          <textarea
+            ref={textareaRef}
+            className="input-textarea"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isLoading ? 'Agent is working...' : 'Message... (Enter to send, Shift+Enter for newline)'}
+            disabled={isLoading}
+            rows={1}
+          />
           {isLoading ? (
-            <button onClick={onAbort} style={styles.abortButton}>
-              Stop
-            </button>
+            <button className="btn btn-danger" onClick={onAbort}>Stop</button>
           ) : (
             <button
+              className="btn btn-primary"
               onClick={handleSubmit}
               disabled={!input.trim()}
-              style={{
-                ...styles.sendButton,
-                opacity: input.trim() ? 1 : 0.5,
-              }}
             >
               Send
             </button>
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    backgroundColor: '#0f172a',
-  },
-  messagesArea: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    color: '#64748b',
-    gap: '8px',
-  },
-  emptyIcon: {
-    fontSize: '48px',
-    fontFamily: 'monospace',
-    color: '#334155',
-  },
-  emptyTitle: {
-    fontSize: '24px',
-    fontWeight: 700,
-    color: '#e2e8f0',
-  },
-  emptySubtitle: {
-    fontSize: '14px',
-  },
-  loadingIndicator: {
-    padding: '8px 16px',
-    color: '#60a5fa',
-    fontSize: '14px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  loadingDot: {
-    fontFamily: 'monospace',
-    animation: 'pulse 1.5s infinite',
-  },
-  inputArea: {
-    borderTop: '1px solid #1e293b',
-    padding: '12px 16px',
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'flex-end',
-    backgroundColor: '#0f172a',
-  },
-  textarea: {
-    flex: 1,
-    resize: 'none',
-    border: '1px solid #334155',
-    borderRadius: '8px',
-    padding: '10px 14px',
-    fontSize: '14px',
-    fontFamily: "'Cascadia Code', 'Fira Code', monospace",
-    backgroundColor: '#1e293b',
-    color: '#e2e8f0',
-    outline: 'none',
-    lineHeight: '1.5',
-  },
-  inputActions: {
-    display: 'flex',
-    gap: '4px',
-  },
-  sendButton: {
-    padding: '10px 20px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  abortButton: {
-    padding: '10px 20px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#dc2626',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-};

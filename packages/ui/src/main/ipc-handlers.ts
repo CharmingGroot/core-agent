@@ -1,4 +1,7 @@
-import { ipcMain, type BrowserWindow } from 'electron';
+import { ipcMain, dialog, type BrowserWindow } from 'electron';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { app } from 'electron';
 import { EventBus, Registry, RunContext, parseAgentConfig } from '@cli-agent/core';
 import type { ITool, AgentConfig } from '@cli-agent/core';
 import { createProvider } from '@cli-agent/providers';
@@ -11,6 +14,27 @@ import { GovernanceHandler } from './governance-handler.js';
 let currentAgent: AgentLoop | undefined;
 let currentConfig: ConfigPayload | undefined;
 const governanceHandler = new GovernanceHandler();
+
+const CONFIG_DIR = join(app.getPath('userData'), 'cli-agent');
+const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
+
+function loadPersistedConfig(): ConfigPayload | undefined {
+  try {
+    const raw = readFileSync(CONFIG_FILE, 'utf-8');
+    return JSON.parse(raw) as ConfigPayload;
+  } catch {
+    return undefined;
+  }
+}
+
+function persistConfig(config: ConfigPayload): void {
+  try {
+    mkdirSync(CONFIG_DIR, { recursive: true });
+    writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('[config] Failed to save config:', error instanceof Error ? error.message : String(error));
+  }
+}
 
 function buildAgentConfig(payload: ConfigPayload): AgentConfig {
   return parseAgentConfig({
@@ -64,7 +88,23 @@ function sanitizeForIpc(obj: unknown): Record<string, unknown> {
   }
 }
 
+function rebuildAgent(window: BrowserWindow): void {
+  if (!currentConfig) return;
+  currentAgent?.abort('Configuration changed');
+  const config = buildAgentConfig(currentConfig);
+  currentAgent = createAgentWithEvents(config, window);
+}
+
 export function registerIpcHandlers(window: BrowserWindow): void {
+  // Load persisted config on startup
+  const persisted = loadPersistedConfig();
+  if (persisted) {
+    currentConfig = persisted;
+    window.webContents.once('did-finish-load', () => {
+      window.webContents.send(IPC_CHANNELS.CONFIG_VALUE, persisted);
+    });
+  }
+
   ipcMain.on(IPC_CHANNELS.SEND_MESSAGE, async (_event, message: string) => {
     if (!currentConfig) {
       window.webContents.send(IPC_CHANNELS.AGENT_ERROR, {
@@ -75,8 +115,11 @@ export function registerIpcHandlers(window: BrowserWindow): void {
     }
 
     try {
-      const config = buildAgentConfig(currentConfig);
-      currentAgent = createAgentWithEvents(config, window);
+      // Reuse existing agent for conversation continuity; create if needed
+      if (!currentAgent) {
+        const config = buildAgentConfig(currentConfig);
+        currentAgent = createAgentWithEvents(config, window);
+      }
 
       const result = await currentAgent.run(message);
       window.webContents.send(IPC_CHANNELS.AGENT_RESPONSE, {
@@ -90,13 +133,16 @@ export function registerIpcHandlers(window: BrowserWindow): void {
         message: error instanceof Error ? error.message : String(error),
         code: error instanceof Error && 'code' in error ? (error as { code: string }).code : undefined,
       });
-    } finally {
-      currentAgent = undefined;
     }
   });
 
   ipcMain.on(IPC_CHANNELS.ABORT, () => {
     currentAgent?.abort('User requested abort');
+  });
+
+  ipcMain.on(IPC_CHANNELS.RESET_CHAT, () => {
+    currentAgent?.abort('Chat reset');
+    currentAgent = undefined;
   });
 
   ipcMain.on(IPC_CHANNELS.GET_CONFIG, () => {
@@ -106,7 +152,34 @@ export function registerIpcHandlers(window: BrowserWindow): void {
   });
 
   ipcMain.on(IPC_CHANNELS.SET_CONFIG, (_event, config: ConfigPayload) => {
+    const configChanged = !currentConfig
+      || currentConfig.providerId !== config.providerId
+      || currentConfig.model !== config.model
+      || currentConfig.apiKey !== config.apiKey
+      || currentConfig.baseUrl !== config.baseUrl
+      || currentConfig.maxTokens !== config.maxTokens
+      || currentConfig.temperature !== config.temperature
+      || currentConfig.systemPrompt !== config.systemPrompt
+      || currentConfig.workingDirectory !== config.workingDirectory;
+
     currentConfig = config;
+    persistConfig(config);
+
+    if (configChanged) {
+      rebuildAgent(window);
+    }
+  });
+
+  // Directory picker dialog
+  ipcMain.on(IPC_CHANNELS.SELECT_DIRECTORY, async () => {
+    const result = await dialog.showOpenDialog(window, {
+      properties: ['openDirectory'],
+      title: 'Select Working Directory',
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      window.webContents.send(IPC_CHANNELS.DIRECTORY_SELECTED, result.filePaths[0]);
+    }
   });
 
   // Governance IPC handlers
@@ -143,8 +216,10 @@ export function registerIpcHandlers(window: BrowserWindow): void {
 export function removeIpcHandlers(): void {
   ipcMain.removeAllListeners(IPC_CHANNELS.SEND_MESSAGE);
   ipcMain.removeAllListeners(IPC_CHANNELS.ABORT);
+  ipcMain.removeAllListeners(IPC_CHANNELS.RESET_CHAT);
   ipcMain.removeAllListeners(IPC_CHANNELS.GET_CONFIG);
   ipcMain.removeAllListeners(IPC_CHANNELS.SET_CONFIG);
+  ipcMain.removeAllListeners(IPC_CHANNELS.SELECT_DIRECTORY);
   ipcMain.removeAllListeners(IPC_CHANNELS.GOV_GET_STATE);
   ipcMain.removeAllListeners(IPC_CHANNELS.GOV_SET_MODE);
   ipcMain.removeAllListeners(IPC_CHANNELS.GOV_ADD_DOMAIN);

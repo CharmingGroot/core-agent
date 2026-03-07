@@ -12,12 +12,15 @@ import type {
 export interface ElectronApi {
   sendMessage: (message: string) => void;
   abort: () => void;
+  resetChat: () => void;
   getConfig: () => void;
   setConfig: (config: ConfigPayload) => void;
+  selectDirectory: () => void;
   onAgentEvent: (callback: (payload: AgentEventPayload) => void) => () => void;
   onAgentResponse: (callback: (payload: AgentResponsePayload) => void) => () => void;
   onAgentError: (callback: (payload: AgentErrorPayload) => void) => () => void;
   onConfigValue: (callback: (config: ConfigPayload) => void) => () => void;
+  onDirectorySelected: (callback: (path: string) => void) => () => void;
 
   // Governance API
   govGetState: () => void;
@@ -36,11 +39,17 @@ const api: ElectronApi = {
   abort: () => {
     ipcRenderer.send(IPC_CHANNELS.ABORT);
   },
+  resetChat: () => {
+    ipcRenderer.send(IPC_CHANNELS.RESET_CHAT);
+  },
   getConfig: () => {
     ipcRenderer.send(IPC_CHANNELS.GET_CONFIG);
   },
   setConfig: (config: ConfigPayload) => {
     ipcRenderer.send(IPC_CHANNELS.SET_CONFIG, config);
+  },
+  selectDirectory: () => {
+    ipcRenderer.send(IPC_CHANNELS.SELECT_DIRECTORY);
   },
   onAgentEvent: (callback) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: AgentEventPayload) => callback(payload);
@@ -61,6 +70,11 @@ const api: ElectronApi = {
     const handler = (_event: Electron.IpcRendererEvent, config: ConfigPayload) => callback(config);
     ipcRenderer.on(IPC_CHANNELS.CONFIG_VALUE, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.CONFIG_VALUE, handler);
+  },
+  onDirectorySelected: (callback) => {
+    const handler = (_event: Electron.IpcRendererEvent, path: string) => callback(path);
+    ipcRenderer.on(IPC_CHANNELS.DIRECTORY_SELECTED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.DIRECTORY_SELECTED, handler);
   },
 
   // Governance API

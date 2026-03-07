@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { AppConfig, AppView } from '../types.js';
 import { ChatPanel } from './ChatPanel.js';
 import { SettingsPanel } from './SettingsPanel.js';
@@ -11,186 +11,120 @@ const DEFAULT_CONFIG: AppConfig = {
   apiKey: '',
   maxTokens: 4096,
   temperature: 0.7,
-  workingDirectory: process.cwd?.() ?? '.',
+  workingDirectory: '.',
 };
 
 export function App(): React.ReactElement {
-  const [view, setView] = useState<AppView>('chat');
+  const [sidePanel, setSidePanel] = useState<AppView | null>(null);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const hasConfig = config.apiKey.length > 0;
+
+  useEffect(() => {
+    if (!window.electronApi) return;
+    const unsub = window.electronApi.onConfigValue((persisted) => {
+      setConfig({
+        providerId: persisted.providerId,
+        model: persisted.model,
+        apiKey: persisted.apiKey,
+        baseUrl: persisted.baseUrl,
+        maxTokens: persisted.maxTokens,
+        temperature: persisted.temperature,
+        systemPrompt: persisted.systemPrompt,
+        workingDirectory: persisted.workingDirectory,
+      });
+    });
+    window.electronApi.getConfig();
+    return unsub;
+  }, []);
 
   const { messages, isLoading, sendMessage, abort, clearMessages } = useAgent(
     hasConfig ? config : null
   );
 
+  const handleNewChat = useCallback(() => {
+    clearMessages();
+    setSidePanel(null);
+  }, [clearMessages]);
+
   const handleSaveConfig = useCallback((newConfig: AppConfig) => {
     setConfig(newConfig);
+    setSidePanel(null);
+  }, []);
+
+  const togglePanel = useCallback((panel: AppView) => {
+    setSidePanel((prev) => (prev === panel ? null : panel));
   }, []);
 
   return (
-    <div style={styles.app}>
-      <div style={styles.titleBar}>
-        <div style={styles.titleLeft}>
-          <span style={styles.logo}>{'>'}_</span>
-          <span style={styles.titleText}>Chamelion</span>
+    <div className="app">
+      {/* Header */}
+      <div className="header">
+        <div className="header-left">
+          <span className="header-logo">{'>'}_</span>
+          <span className="header-title">Chamelion</span>
         </div>
-        <div style={styles.titleRight}>
+        <div className="header-right">
           {hasConfig && (
-            <span style={styles.providerBadge}>
+            <span className="provider-badge">
               {config.providerId} / {config.model}
             </span>
           )}
-          <button
-            onClick={clearMessages}
-            style={styles.titleButton}
-            title="Clear chat"
-          >
-            Clear
+          <button className="btn" onClick={handleNewChat}>
+            New Chat
           </button>
           <button
-            onClick={() => setView(view === 'governance' ? 'chat' : 'governance')}
-            style={{
-              ...styles.titleButton,
-              ...(view === 'governance' ? { color: '#a78bfa', borderColor: '#7c3aed' } : {}),
-            }}
+            className={`btn ${sidePanel === 'governance' ? 'btn-active' : ''}`}
+            onClick={() => togglePanel('governance')}
           >
             Governance
           </button>
           <button
-            onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
-            style={styles.titleButton}
+            className={`btn ${sidePanel === 'settings' ? 'btn-active' : ''}`}
+            onClick={() => togglePanel('settings')}
           >
-            {view === 'chat' || view === 'governance' ? 'Settings' : 'Chat'}
+            Settings
           </button>
         </div>
       </div>
 
-      <div style={styles.content}>
-        {view === 'governance' ? (
-          <GovernancePanel onBack={() => setView('chat')} />
-        ) : view === 'settings' ? (
-          <SettingsPanel
-            config={config}
-            onSave={handleSaveConfig}
-            onBack={() => setView('chat')}
-          />
-        ) : !hasConfig ? (
-          <div style={styles.noConfig}>
-            <div style={styles.noConfigIcon}>{'>'}_</div>
-            <div style={styles.noConfigTitle}>Welcome to Chamelion</div>
-            <div style={styles.noConfigText}>
-              Configure your API key to get started
+      {/* Main */}
+      <div className="main">
+        <div className="chat-area">
+          {!hasConfig ? (
+            <div className="welcome">
+              <div className="welcome-icon">{'>'}_</div>
+              <div className="welcome-title">Welcome to Chamelion</div>
+              <div className="welcome-text">Configure your API key to get started</div>
+              <button className="btn btn-primary" onClick={() => setSidePanel('settings')}>
+                Open Settings
+              </button>
             </div>
-            <button
-              onClick={() => setView('settings')}
-              style={styles.configButton}
-            >
-              Open Settings
-            </button>
+          ) : (
+            <ChatPanel
+              messages={messages}
+              isLoading={isLoading}
+              onSendMessage={sendMessage}
+              onAbort={abort}
+            />
+          )}
+        </div>
+
+        {/* Side Panel */}
+        {sidePanel === 'settings' && (
+          <div className="side-panel">
+            <SettingsPanel
+              config={config}
+              onSave={handleSaveConfig}
+              onBack={() => setSidePanel(null)}
+            />
           </div>
-        ) : (
-          <ChatPanel
-            messages={messages}
-            isLoading={isLoading}
-            onSendMessage={sendMessage}
-            onAbort={abort}
-          />
+        )}
+        {sidePanel === 'governance' && (
+          <div className="side-panel">
+            <GovernancePanel onBack={() => setSidePanel(null)} />
+          </div>
         )}
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  app: {
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: '#0f172a',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  },
-  titleBar: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px 16px',
-    backgroundColor: '#020617',
-    borderBottom: '1px solid #1e293b',
-    userSelect: 'none',
-  },
-  titleLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  logo: {
-    fontFamily: 'monospace',
-    fontSize: '18px',
-    color: '#60a5fa',
-    fontWeight: 700,
-  },
-  titleText: {
-    fontSize: '14px',
-    fontWeight: 600,
-    color: '#e2e8f0',
-  },
-  titleRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  providerBadge: {
-    fontSize: '11px',
-    color: '#94a3b8',
-    backgroundColor: '#1e293b',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    fontFamily: 'monospace',
-  },
-  titleButton: {
-    background: 'none',
-    border: '1px solid #334155',
-    borderRadius: '4px',
-    color: '#94a3b8',
-    padding: '4px 10px',
-    cursor: 'pointer',
-    fontSize: '12px',
-  },
-  content: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  noConfig: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: '12px',
-    color: '#64748b',
-  },
-  noConfigIcon: {
-    fontSize: '64px',
-    fontFamily: 'monospace',
-    color: '#1e293b',
-  },
-  noConfigTitle: {
-    fontSize: '24px',
-    fontWeight: 700,
-    color: '#e2e8f0',
-  },
-  noConfigText: {
-    fontSize: '14px',
-  },
-  configButton: {
-    marginTop: '8px',
-    padding: '10px 24px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-};

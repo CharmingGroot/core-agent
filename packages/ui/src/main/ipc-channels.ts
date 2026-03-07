@@ -2,8 +2,10 @@ export const IPC_CHANNELS = {
   // Renderer -> Main
   SEND_MESSAGE: 'agent:send-message',
   ABORT: 'agent:abort',
+  RESET_CHAT: 'agent:reset-chat',
   GET_CONFIG: 'config:get',
   SET_CONFIG: 'config:set',
+  SELECT_DIRECTORY: 'dialog:select-directory',
 
   // Governance Renderer -> Main
   GOV_GET_STATE: 'gov:get-state',
@@ -18,6 +20,7 @@ export const IPC_CHANNELS = {
   AGENT_RESPONSE: 'agent:response',
   AGENT_ERROR: 'agent:error',
   CONFIG_VALUE: 'config:value',
+  DIRECTORY_SELECTED: 'dialog:directory-selected',
 
   // Governance Main -> Renderer
   GOV_STATE: 'gov:state',

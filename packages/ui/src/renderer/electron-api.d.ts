@@ -2,12 +2,15 @@
 export interface ElectronApi {
   sendMessage: (message: string) => void;
   abort: () => void;
+  resetChat: () => void;
   getConfig: () => void;
   setConfig: (config: ConfigPayload) => void;
+  selectDirectory: () => void;
   onAgentEvent: (callback: (payload: AgentEventPayload) => void) => () => void;
   onAgentResponse: (callback: (payload: AgentResponsePayload) => void) => () => void;
   onAgentError: (callback: (payload: AgentErrorPayload) => void) => () => void;
   onConfigValue: (callback: (config: ConfigPayload) => void) => () => void;
+  onDirectorySelected: (callback: (path: string) => void) => () => void;
 
   // Governance API
   govGetState: () => void;

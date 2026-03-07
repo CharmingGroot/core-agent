@@ -127,6 +127,7 @@ export function useAgent(config: AppConfig | null): UseAgentReturn {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    window.electronApi?.resetChat();
   }, []);
 
   return { messages, isLoading, sendMessage, abort, clearMessages };

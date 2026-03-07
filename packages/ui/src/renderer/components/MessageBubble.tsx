@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ChatMessage, ToolCallDisplay } from '../types.js';
 
 const COLLAPSED_LINES = 5;
 
 function CollapsedText({ text, maxLines }: { text: string; maxLines: number }): React.ReactElement {
-  const [expanded, setExpanded] = React.useState(false);
+  const [expanded, setExpanded] = useState(false);
   const lines = text.split('\n');
 
   if (lines.length <= maxLines) {
-    return <pre style={styles.pre}>{text}</pre>;
+    return <pre className="message-content">{text}</pre>;
   }
 
   const displayed = expanded ? text : lines.slice(0, maxLines).join('\n');
@@ -16,11 +16,8 @@ function CollapsedText({ text, maxLines }: { text: string; maxLines: number }): 
 
   return (
     <div>
-      <pre style={styles.pre}>{displayed}</pre>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={styles.expandButton}
-      >
+      <pre className="message-content">{displayed}</pre>
+      <button className="expand-btn" onClick={() => setExpanded(!expanded)}>
         {expanded ? 'Collapse' : `... +${remaining} lines`}
       </button>
     </div>
@@ -28,16 +25,18 @@ function CollapsedText({ text, maxLines }: { text: string; maxLines: number }): 
 }
 
 function ToolCallView({ toolCall }: { toolCall: ToolCallDisplay }): React.ReactElement {
+  const [expanded, setExpanded] = useState(false);
+
+  const statusIcons: Record<string, string> = {
+    running: '\u25cb',
+    success: '\u2713',
+    error: '\u2717',
+  };
+
   const statusColors: Record<string, string> = {
     running: '#f59e0b',
     success: '#10b981',
     error: '#ef4444',
-  };
-
-  const statusIcon: Record<string, string> = {
-    running: '\u25cb',
-    success: '\u2713',
-    error: '\u2717',
   };
 
   let parsedArgs = '';
@@ -48,24 +47,40 @@ function ToolCallView({ toolCall }: { toolCall: ToolCallDisplay }): React.ReactE
   }
 
   return (
-    <div style={{ ...styles.toolCall, borderLeftColor: statusColors[toolCall.status] }}>
-      <div style={styles.toolHeader}>
-        <span style={{ color: statusColors[toolCall.status] }}>
-          {statusIcon[toolCall.status]}
+    <div className={`tool-call tool-call-${toolCall.status}`}>
+      <div className="tool-header" onClick={() => setExpanded(!expanded)}>
+        <span className="tool-status-icon" style={{ color: statusColors[toolCall.status] }}>
+          {statusIcons[toolCall.status]}
         </span>
-        <span style={styles.toolName}>{toolCall.name}</span>
+        <span className="tool-name">{toolCall.name}</span>
         {toolCall.durationMs !== undefined && (
-          <span style={styles.toolDuration}>{toolCall.durationMs}ms</span>
+          <span className="tool-duration">{toolCall.durationMs}ms</span>
         )}
+        <span className="tool-chevron">{expanded ? '\u25b2' : '\u25bc'}</span>
       </div>
-      <CollapsedText text={parsedArgs} maxLines={COLLAPSED_LINES} />
-      {toolCall.result && (
-        <div style={styles.toolResult}>
-          <CollapsedText text={toolCall.result} maxLines={COLLAPSED_LINES} />
+
+      {expanded && (
+        <div className="tool-body">
+          <div className="tool-section-label">Arguments</div>
+          <pre className="tool-code">{parsedArgs}</pre>
         </div>
       )}
+
+      {toolCall.result && (
+        <div className="tool-body">
+          <pre className="tool-code tool-result">
+            {expanded ? toolCall.result : toolCall.result.split('\n').slice(0, COLLAPSED_LINES).join('\n')}
+          </pre>
+          {!expanded && toolCall.result.split('\n').length > COLLAPSED_LINES && (
+            <button className="expand-btn" onClick={() => setExpanded(true)}>
+              ... +{toolCall.result.split('\n').length - COLLAPSED_LINES} lines
+            </button>
+          )}
+        </div>
+      )}
+
       {toolCall.error && (
-        <div style={styles.toolError}>{toolCall.error}</div>
+        <div className="tool-error">{toolCall.error}</div>
       )}
     </div>
   );
@@ -76,127 +91,28 @@ export function MessageBubble({ message }: { message: ChatMessage }): React.Reac
   const time = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{ ...styles.bubble, alignSelf: isUser ? 'flex-end' : 'flex-start' }}>
-      <div style={{
-        ...styles.bubbleContent,
-        backgroundColor: isUser ? '#2563eb' : '#1e293b',
-        borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-      }}>
-        <div style={styles.roleLabel}>
+    <div className="message">
+      <div className="message-header">
+        <span className={`message-role ${isUser ? 'message-role-user' : 'message-role-assistant'}`}>
           {isUser ? 'You' : 'Assistant'}
-          <span style={styles.timestamp}>{time}</span>
-          {message.iterations !== undefined && (
-            <span style={styles.iterations}>{message.iterations} iter</span>
-          )}
-        </div>
-
-        {message.toolCalls && message.toolCalls.length > 0 && (
-          <div style={styles.toolCallsContainer}>
-            {message.toolCalls.map((tc) => (
-              <ToolCallView key={tc.id} toolCall={tc} />
-            ))}
-          </div>
-        )}
-
-        {message.content && (
-          <div style={styles.messageContent}>
-            <CollapsedText text={message.content} maxLines={30} />
-          </div>
+        </span>
+        <span className="message-time">{time}</span>
+        {message.iterations !== undefined && (
+          <span className="message-iterations">{message.iterations} iter</span>
         )}
       </div>
+
+      {message.toolCalls && message.toolCalls.length > 0 && (
+        <div className="tool-calls">
+          {message.toolCalls.map((tc) => (
+            <ToolCallView key={tc.id} toolCall={tc} />
+          ))}
+        </div>
+      )}
+
+      {message.content && (
+        <CollapsedText text={message.content} maxLines={30} />
+      )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  bubble: {
-    display: 'flex',
-    maxWidth: '85%',
-    marginBottom: '12px',
-  },
-  bubbleContent: {
-    padding: '12px 16px',
-    color: '#e2e8f0',
-    fontSize: '14px',
-    lineHeight: '1.5',
-    wordBreak: 'break-word',
-  },
-  roleLabel: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#94a3b8',
-    marginBottom: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  timestamp: {
-    fontWeight: 400,
-    color: '#64748b',
-  },
-  iterations: {
-    fontWeight: 400,
-    color: '#64748b',
-    fontSize: '10px',
-    backgroundColor: '#334155',
-    padding: '1px 6px',
-    borderRadius: '4px',
-  },
-  messageContent: {
-    marginTop: '4px',
-  },
-  pre: {
-    margin: 0,
-    fontFamily: "'Cascadia Code', 'Fira Code', monospace",
-    fontSize: '13px',
-    whiteSpace: 'pre-wrap' as const,
-    wordBreak: 'break-word' as const,
-  },
-  expandButton: {
-    background: 'none',
-    border: 'none',
-    color: '#60a5fa',
-    cursor: 'pointer',
-    fontSize: '12px',
-    padding: '2px 0',
-    fontFamily: 'monospace',
-  },
-  toolCallsContainer: {
-    margin: '8px 0',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '6px',
-  },
-  toolCall: {
-    backgroundColor: '#0f172a',
-    borderLeft: '3px solid',
-    borderRadius: '4px',
-    padding: '8px 12px',
-    fontSize: '13px',
-  },
-  toolHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginBottom: '4px',
-    fontWeight: 600,
-  },
-  toolName: {
-    color: '#f1f5f9',
-    fontFamily: 'monospace',
-  },
-  toolDuration: {
-    color: '#64748b',
-    fontSize: '11px',
-    marginLeft: 'auto',
-  },
-  toolResult: {
-    marginTop: '4px',
-    color: '#86efac',
-  },
-  toolError: {
-    marginTop: '4px',
-    color: '#fca5a5',
-    fontSize: '12px',
-  },
-};

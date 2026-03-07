@@ -1,0 +1,571 @@
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ── App Shell ── */
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background-color: #020617;
+  border-bottom: 1px solid #1e293b;
+  user-select: none;
+  -webkit-app-region: drag;
+  min-height: 42px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.header-logo {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 16px;
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.provider-badge {
+  font-size: 11px;
+  color: #64748b;
+  background-color: #1e293b;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* ── Buttons ── */
+.btn {
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  background: #1e293b;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+.btn:active {
+  background: #475569;
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.btn-primary:active {
+  background: #1e40af;
+}
+
+.btn-primary:disabled {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #64748b;
+  cursor: default;
+  transform: none;
+}
+
+.btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.btn-danger:active {
+  background: #991b1b;
+}
+
+.btn-active {
+  color: #60a5fa;
+  border-color: #2563eb;
+  background: #172554;
+}
+
+.btn-icon {
+  padding: 5px 8px;
+  font-size: 14px;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* ── Main Content ── */
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Messages ── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.messages-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #475569;
+  gap: 8px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.empty-subtitle {
+  font-size: 14px;
+  color: #475569;
+}
+
+/* ── Message Bubble ── */
+.message {
+  padding: 12px 0;
+  border-bottom: 1px solid #1e293b10;
+}
+
+.message + .message {
+  margin-top: 4px;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.message-role {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.message-role-user {
+  color: #60a5fa;
+}
+
+.message-role-assistant {
+  color: #a78bfa;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #475569;
+}
+
+.message-iterations {
+  font-size: 10px;
+  color: #64748b;
+  background: #1e293b;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.message-content {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #e2e8f0;
+}
+
+.message-content pre {
+  margin: 0;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Tool Calls ── */
+.tool-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tool-call {
+  background: #0c1222;
+  border-left: 3px solid #475569;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tool-call-running { border-left-color: #f59e0b; }
+.tool-call-success { border-left-color: #10b981; }
+.tool-call-error   { border-left-color: #ef4444; }
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tool-header:hover {
+  background: #1e293b40;
+}
+
+.tool-status-icon {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tool-name {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-weight: 600;
+  font-size: 12px;
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.tool-duration {
+  color: #475569;
+  font-size: 11px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.tool-chevron {
+  color: #475569;
+  font-size: 10px;
+}
+
+.tool-body {
+  padding: 0 12px 8px;
+  border-top: 1px solid #1e293b;
+}
+
+.tool-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  margin: 6px 0 4px;
+}
+
+.tool-code {
+  margin: 0;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-result {
+  color: #86efac;
+}
+
+.tool-error {
+  color: #fca5a5;
+  font-size: 12px;
+  padding: 4px 12px 8px;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 0;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+.expand-btn:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+/* ── Loading ── */
+.loading {
+  padding: 12px 0;
+  color: #60a5fa;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
+/* ── Input Area ── */
+.input-area {
+  border-top: 1px solid #1e293b;
+  padding: 12px 0;
+  background: #0f172a;
+}
+
+.input-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.input-textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #1e293b;
+  color: #e2e8f0;
+  outline: none;
+  line-height: 1.5;
+  min-height: 42px;
+  max-height: 160px;
+  transition: border-color 0.15s ease;
+}
+
+.input-textarea:focus {
+  border-color: #2563eb;
+}
+
+.input-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-textarea::placeholder {
+  color: #475569;
+}
+
+/* ── Side Panel ── */
+.side-panel {
+  width: 380px;
+  background: #0c1222;
+  border-left: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.side-panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.side-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ── Settings Form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.field-input {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+
+.field-input:focus {
+  border-color: #2563eb;
+}
+
+.field-select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ── Welcome Screen ── */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: #475569;
+}
+
+.welcome-icon {
+  font-size: 56px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.welcome-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.welcome-text {
+  font-size: 14px;
+  color: #475569;
+  margin-bottom: 8px;
+}

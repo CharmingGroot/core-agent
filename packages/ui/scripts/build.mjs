@@ -2,21 +2,35 @@
  * Full build script for @cli-agent/ui Electron app.
  *
  * Steps:
- *   1. Compile main process (TypeScript -> CommonJS) via tsc
+ *   1. Bundle main process (TypeScript -> CJS .cjs) via esbuild
  *   2. Bundle renderer process (React TSX -> ESM bundle) via esbuild
  */
+import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-function run(cmd, label) {
-  console.log(`[build] ${label}...`);
-  execSync(cmd, { cwd: ROOT, stdio: 'inherit' });
-}
+/* ── Main process ── */
+console.log('[build] Bundling main process...');
+await build({
+  entryPoints: [
+    resolve(ROOT, 'src/main/main.ts'),
+    resolve(ROOT, 'src/main/preload.ts'),
+  ],
+  bundle: true,
+  platform: 'node',
+  target: 'node18',
+  format: 'cjs',
+  outdir: resolve(ROOT, 'dist/main'),
+  outExtension: { '.js': '.cjs' },
+  external: ['electron'],
+  sourcemap: true,
+});
 
-run('npx tsc -p tsconfig.json', 'Compiling main process');
-run('node scripts/build-renderer.mjs', 'Bundling renderer');
+/* ── Renderer process ── */
+console.log('[build] Bundling renderer...');
+execSync('node scripts/build-renderer.mjs', { cwd: ROOT, stdio: 'inherit' });
 
 console.log('[build] Done.');
