@@ -210,6 +210,49 @@ describe('AgentLoop', () => {
     expect(agent1.runId).not.toBe(agent2.runId);
   });
 
+  it('should use streaming when enabled', async () => {
+    const finalResponse: LlmResponse = {
+      content: 'Hello world',
+      stopReason: 'end_turn',
+      toolCalls: [],
+      usage: { inputTokens: 10, outputTokens: 5 },
+    };
+
+    const streamEvents: StreamEvent[] = [
+      { type: 'text_delta', content: 'Hello' },
+      { type: 'text_delta', content: ' world' },
+      { type: 'done', response: finalResponse },
+    ];
+
+    const provider: ILlmProvider = {
+      providerId: 'mock',
+      chat: vi.fn(),
+      async *stream() {
+        for (const event of streamEvents) {
+          yield event;
+        }
+      },
+    };
+
+    const toolRegistry = new Registry<ITool>('Tool');
+    const agent = new AgentLoop({
+      provider,
+      toolRegistry,
+      config: TEST_CONFIG,
+      streaming: true,
+    });
+
+    const chunks: string[] = [];
+    agent.eventBus.on('llm:stream', (payload) => {
+      chunks.push(payload.chunk);
+    });
+
+    const result = await agent.run('Hi');
+    expect(result.content).toBe('Hello world');
+    expect(chunks).toEqual(['Hello', ' world']);
+    expect(provider.chat).not.toHaveBeenCalled();
+  });
+
   it('should include system prompt in messages', async () => {
     const provider = createMockProvider([
       {

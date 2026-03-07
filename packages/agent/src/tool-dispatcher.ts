@@ -1,4 +1,4 @@
-import type { ITool, ToolCall, ToolResult, JsonObject } from '@cli-agent/core';
+import type { ITool, ToolCall, ToolResult, ToolDescription, JsonObject } from '@cli-agent/core';
 import {
   Registry,
   PermissionDeniedError,
@@ -72,22 +72,30 @@ export class ToolDispatcher {
     toolCalls: readonly ToolCall[],
     context: RunContext
   ): Promise<ReadonlyMap<string, ToolResult>> {
-    const results = new Map<string, ToolResult>();
+    const abortedResult: ToolResult = {
+      success: false,
+      output: '',
+      error: 'Operation aborted',
+    };
 
-    for (const toolCall of toolCalls) {
-      if (context.isAborted) {
-        results.set(toolCall.id, {
-          success: false,
-          output: '',
-          error: 'Operation aborted',
-        });
-        continue;
-      }
+    const entries = await Promise.all(
+      toolCalls.map(async (toolCall): Promise<[string, ToolResult]> => {
+        if (context.isAborted) {
+          return [toolCall.id, abortedResult];
+        }
+        const result = await this.dispatch(toolCall, context);
+        return [toolCall.id, result];
+      })
+    );
 
-      const result = await this.dispatch(toolCall, context);
-      results.set(toolCall.id, result);
+    return new Map(entries);
+  }
+
+  getToolDescriptions(): ToolDescription[] {
+    const descriptions: ToolDescription[] = [];
+    for (const [, tool] of this.toolRegistry.getAll()) {
+      descriptions.push(tool.describe());
     }
-
-    return results;
+    return descriptions;
   }
 }

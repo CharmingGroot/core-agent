@@ -3,6 +3,9 @@ import type {
   ITool,
   AgentConfig,
   ToolDescription,
+  LlmResponse,
+  StreamEvent,
+  Message,
   AgentLogger,
 } from '@cli-agent/core';
 import {
@@ -22,6 +25,7 @@ export interface AgentLoopOptions {
   config: AgentConfig;
   permissionHandler?: PermissionHandler;
   eventBus?: EventBus;
+  streaming?: boolean;
 }
 
 export interface AgentResult {
@@ -38,6 +42,7 @@ export class AgentLoop {
   private readonly context: RunContext;
   private readonly maxIterations: number;
   private readonly logger: AgentLogger;
+  private readonly streaming: boolean;
   private iterations = 0;
 
   constructor(options: AgentLoopOptions) {
@@ -47,6 +52,7 @@ export class AgentLoop {
     this.messageManager = new MessageManager();
     this.maxIterations = options.config.maxIterations;
     this.logger = createChildLogger('agent-loop');
+    this.streaming = options.streaming ?? false;
 
     const permissionManager = new PermissionManager(options.permissionHandler);
     this.toolDispatcher = new ToolDispatcher(options.toolRegistry, permissionManager);
@@ -88,7 +94,9 @@ export class AgentLoop {
           messages,
         });
 
-        const response = await this.provider.chat(messages, toolDescriptions);
+        const response = this.streaming
+          ? await this.streamResponse(messages, toolDescriptions)
+          : await this.provider.chat(messages, toolDescriptions);
 
         this.context.eventBus.emit('llm:response', {
           runId: this.context.runId,
@@ -140,19 +148,30 @@ export class AgentLoop {
     return this.context;
   }
 
-  private getToolDescriptions(): ToolDescription[] {
-    const tools = this.context.config.sandbox
-      ? [...this.getRegisteredToolDescriptions()]
-      : this.getRegisteredToolDescriptions();
-    return tools;
+  private async streamResponse(
+    messages: readonly Message[],
+    tools: ToolDescription[]
+  ): Promise<LlmResponse> {
+    let finalResponse: LlmResponse | undefined;
+
+    for await (const event of this.provider.stream(messages, tools)) {
+      if (event.type === 'text_delta' && event.content) {
+        this.context.eventBus.emit('llm:stream', {
+          runId: this.context.runId,
+          chunk: event.content,
+        });
+      } else if (event.type === 'done' && event.response) {
+        finalResponse = event.response;
+      }
+    }
+
+    if (!finalResponse) {
+      throw new Error('Stream ended without a final response');
+    }
+    return finalResponse;
   }
 
-  private getRegisteredToolDescriptions(): ToolDescription[] {
-    const descriptions: ToolDescription[] = [];
-    const tools = this.toolDispatcher['toolRegistry'].getAll();
-    for (const [, tool] of tools) {
-      descriptions.push(tool.describe());
-    }
-    return descriptions;
+  private getToolDescriptions(): ToolDescription[] {
+    return this.toolDispatcher.getToolDescriptions();
   }
 }
