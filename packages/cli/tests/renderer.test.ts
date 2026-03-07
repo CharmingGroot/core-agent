@@ -7,18 +7,21 @@ describe('CliRenderer', () => {
   let renderer: CliRenderer;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
+  let writeSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     eventBus = new EventBus();
     renderer = new CliRenderer(eventBus);
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    writeSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
   });
 
   afterEach(() => {
     renderer.detach();
     consoleSpy.mockRestore();
     errorSpy.mockRestore();
+    writeSpy.mockRestore();
   });
 
   it('should attach and listen to events', () => {
@@ -27,14 +30,15 @@ describe('CliRenderer', () => {
     expect(consoleSpy).toHaveBeenCalled();
   });
 
-  it('should render tool:start events', () => {
+  it('should render tool:start events via spinner', () => {
     renderer.attach();
     eventBus.emit('tool:start', {
       runId: 'run-1',
       toolCall: { id: 'tc-1', name: 'file_read', arguments: '{}' },
     });
-    expect(consoleSpy).toHaveBeenCalled();
-    const output = consoleSpy.mock.calls.map((c) => c[0]).join(' ');
+    // In non-TTY test env, spinner writes to stdout
+    expect(writeSpy).toHaveBeenCalled();
+    const output = writeSpy.mock.calls.map((c) => String(c[0])).join('');
     expect(output).toContain('file_read');
   });
 

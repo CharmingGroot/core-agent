@@ -1,5 +1,7 @@
 export { createCliApp } from './cli-app.js';
 export { CliRenderer } from './renderer.js';
+export { StatusSpinner } from './status-spinner.js';
+export type { SpinnerMetrics } from './status-spinner.js';
 export { InputHandler } from './input-handler.js';
 export type { InputResult, InputType } from './input-handler.js';
 export { chatCommand } from './commands/chat.js';

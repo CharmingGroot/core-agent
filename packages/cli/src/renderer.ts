@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { EventBus, ToolResult, ToolCall, LlmResponse } from '@cli-agent/core';
+import { StatusSpinner } from './status-spinner.js';
 
 const COLLAPSED_LINE_LIMIT = 5;
 const BOX_WIDTH = 72;
@@ -47,6 +48,8 @@ export class CliRenderer {
   private streamedChunks = 0;
   private totalInputTokens = 0;
   private totalOutputTokens = 0;
+  private readonly spinner = new StatusSpinner();
+  private runStartTime = 0;
 
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
@@ -59,6 +62,7 @@ export class CliRenderer {
         this.totalInputTokens = 0;
         this.totalOutputTokens = 0;
         this.streamedChunks = 0;
+        this.runStartTime = Date.now();
         console.log(chalk.dim(`\n${'─'.repeat(BOX_WIDTH)}`));
         console.log(chalk.dim(`  Run: ${runId.slice(0, 8)}...`));
         console.log(chalk.dim(`${'─'.repeat(BOX_WIDTH)}`));
@@ -67,15 +71,17 @@ export class CliRenderer {
 
     this.unsubscribers.push(
       this.eventBus.on('agent:end', ({ reason }) => {
+        this.spinner.stop();
+        const elapsed = formatDuration(Date.now() - this.runStartTime);
         console.log(chalk.dim(`\n${'─'.repeat(BOX_WIDTH)}`));
         const status = reason === 'complete'
           ? chalk.green('completed')
           : chalk.yellow(reason);
         const tokens = chalk.dim(
-          `tokens: ${this.totalInputTokens} in / ${this.totalOutputTokens} out`
+          `↓ ${this.totalInputTokens} ↑ ${this.totalOutputTokens} tokens`
         );
         console.log(
-          chalk.dim(`  ${status} | ${this.iterationCount} iteration(s) | ${tokens}`)
+          chalk.dim(`  ${status} | ${elapsed} | ${this.iterationCount} iter | ${tokens}`)
         );
         console.log(chalk.dim(`${'─'.repeat(BOX_WIDTH)}\n`));
       })
@@ -83,6 +89,7 @@ export class CliRenderer {
 
     this.unsubscribers.push(
       this.eventBus.on('agent:error', ({ error }) => {
+        this.spinner.stop();
         console.log('');
         console.log(boxTop('ERROR', chalk.red));
         console.log(boxLine(error.message, chalk.red));
@@ -99,34 +106,41 @@ export class CliRenderer {
     this.unsubscribers.push(
       this.eventBus.on('llm:request', () => {
         this.iterationCount++;
-        console.log(
-          chalk.dim(`\n  [${this.iterationCount}] `) + chalk.blue('Thinking...')
+        this.spinner.start(
+          `Thinking…`,
+          `✽`,
         );
+        this.spinner.updateMetrics({
+          inputTokens: this.totalInputTokens,
+          outputTokens: this.totalOutputTokens,
+        });
       })
     );
 
     this.unsubscribers.push(
       this.eventBus.on('llm:response', ({ response }) => {
-        if (this.streamedChunks > 0) {
-          process.stdout.write('\n');
-          this.streamedChunks = 0;
-        }
         this.totalInputTokens += response.usage.inputTokens;
         this.totalOutputTokens += response.usage.outputTokens;
 
         const tokenInfo = chalk.dim(
-          `(${response.usage.inputTokens}+${response.usage.outputTokens} tokens)`
+          `(↓ ${response.usage.inputTokens} ↑ ${response.usage.outputTokens} tokens)`
         );
 
+        if (this.streamedChunks > 0) {
+          this.spinner.stop();
+          process.stdout.write('\n');
+          this.streamedChunks = 0;
+        }
+
         if (response.toolCalls.length > 0) {
-          console.log(
-            chalk.dim(`  [${this.iterationCount}] `) +
+          this.spinner.stop(
+            chalk.dim(`[${this.iterationCount}] `) +
             chalk.yellow(`${response.toolCalls.length} tool call(s) `) +
             tokenInfo
           );
         } else {
-          console.log(
-            chalk.dim(`  [${this.iterationCount}] `) +
+          this.spinner.stop(
+            chalk.dim(`[${this.iterationCount}] `) +
             chalk.green('Response ready ') +
             tokenInfo
           );
@@ -136,6 +150,14 @@ export class CliRenderer {
 
     this.unsubscribers.push(
       this.eventBus.on('llm:stream', ({ chunk }) => {
+        if (this.streamedChunks === 0 && this.spinner.isActive) {
+          // First chunk: stop spinner, switch to streaming mode
+          this.spinner.stop(
+            chalk.dim(`[${this.iterationCount}] `) +
+            chalk.blue('Streaming…')
+          );
+          console.log('');
+        }
         this.streamedChunks++;
         process.stdout.write(chunk);
       })
@@ -144,9 +166,7 @@ export class CliRenderer {
     this.unsubscribers.push(
       this.eventBus.on('tool:start', ({ toolCall }) => {
         this.toolStartTimes.set(toolCall.id, Date.now());
-        console.log('');
-        console.log(boxTop(toolCall.name, chalk.yellow));
-        this.renderToolArgs(toolCall);
+        this.spinner.start(`${toolCall.name}…`, '⚙');
       })
     );
 
@@ -156,6 +176,10 @@ export class CliRenderer {
         const duration = startTime ? Date.now() - startTime : 0;
         this.toolStartTimes.delete(toolCall.id);
 
+        this.spinner.stop();
+        console.log('');
+        console.log(boxTop(toolCall.name, chalk.yellow));
+        this.renderToolArgs(toolCall);
         this.renderToolResult(result, duration);
         console.log(boxBottom(result.success ? chalk.green : chalk.red));
       })
@@ -171,6 +195,7 @@ export class CliRenderer {
   }
 
   detach(): void {
+    this.spinner.stop();
     for (const unsub of this.unsubscribers) {
       unsub();
     }
