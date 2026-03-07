@@ -127,6 +127,40 @@ describe('ToolDispatcher', () => {
     expect(endHandler).toHaveBeenCalledOnce();
   });
 
+  it('should truncate oversized tool output', async () => {
+    const bigOutput = 'x'.repeat(100_000);
+    const tool: ITool = {
+      name: 'big_tool',
+      requiresPermission: false,
+      describe: () => ({ name: 'big_tool', description: 'test', parameters: [] }),
+      execute: vi.fn().mockResolvedValue({ success: true, output: bigOutput }),
+    };
+    toolRegistry.register('big_tool', tool);
+
+    const toolCall: ToolCall = { id: 'tc-1', name: 'big_tool', arguments: '{}' };
+    const result = await dispatcher.dispatch(toolCall, context);
+
+    expect(result.success).toBe(true);
+    expect(result.output.length).toBeLessThan(bigOutput.length);
+    expect(result.output).toContain('output truncated');
+  });
+
+  it('should not truncate output within limit', async () => {
+    const normalOutput = 'x'.repeat(1000);
+    const tool: ITool = {
+      name: 'small_tool',
+      requiresPermission: false,
+      describe: () => ({ name: 'small_tool', description: 'test', parameters: [] }),
+      execute: vi.fn().mockResolvedValue({ success: true, output: normalOutput }),
+    };
+    toolRegistry.register('small_tool', tool);
+
+    const toolCall: ToolCall = { id: 'tc-1', name: 'small_tool', arguments: '{}' };
+    const result = await dispatcher.dispatch(toolCall, context);
+
+    expect(result.output).toBe(normalOutput);
+  });
+
   it('should abort remaining tools when context is aborted', async () => {
     toolRegistry.register('tool_a', createMockTool('tool_a'));
     toolRegistry.register('tool_b', createMockTool('tool_b'));

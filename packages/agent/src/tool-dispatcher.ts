@@ -7,6 +7,10 @@ import {
 import type { RunContext, AgentLogger } from '@cli-agent/core';
 import { PermissionManager } from './permission.js';
 
+/** Maximum characters in a single tool result output */
+const MAX_OUTPUT_CHARS = 80_000;
+const TRUNCATION_NOTICE = '\n\n... [output truncated — exceeded 80,000 characters]';
+
 export class ToolDispatcher {
   private readonly toolRegistry: Registry<ITool>;
   private readonly permissionManager: PermissionManager;
@@ -64,8 +68,9 @@ export class ToolDispatcher {
       result = { success: false, output: '', error: message };
     }
 
-    context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result });
-    return result;
+    const truncated = this.truncateResult(result);
+    context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result: truncated });
+    return truncated;
   }
 
   async dispatchAll(
@@ -89,6 +94,18 @@ export class ToolDispatcher {
     );
 
     return new Map(entries);
+  }
+
+  private truncateResult(result: ToolResult): ToolResult {
+    if (result.output.length <= MAX_OUTPUT_CHARS) return result;
+    this.logger.info(
+      { originalLength: result.output.length, limit: MAX_OUTPUT_CHARS },
+      'Tool output truncated',
+    );
+    return {
+      ...result,
+      output: result.output.slice(0, MAX_OUTPUT_CHARS) + TRUNCATION_NOTICE,
+    };
   }
 
   getToolDescriptions(): ToolDescription[] {
