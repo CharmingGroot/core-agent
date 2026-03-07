@@ -9,11 +9,13 @@ describe('ToolRegistry', () => {
     expect(registry.has('file_search')).toBe(true);
     expect(registry.has('shell_exec')).toBe(true);
     expect(registry.has('reflect')).toBe(true);
+    expect(registry.has('file_edit')).toBe(true);
+    expect(registry.has('content_search')).toBe(true);
   });
 
-  it('should have 5 default tools', () => {
+  it('should have 7 default tools', () => {
     const registry = createToolRegistry();
-    expect(registry.size).toBe(5);
+    expect(registry.size).toBe(7);
   });
 
   it('should return tool instances', () => {
@@ -34,6 +36,6 @@ describe('ToolRegistry', () => {
     };
     registry.register('custom', mockTool);
     expect(registry.has('custom')).toBe(true);
-    expect(registry.size).toBe(6);
+    expect(registry.size).toBe(8);
   });
 });
