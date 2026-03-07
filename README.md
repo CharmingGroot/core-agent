@@ -1,33 +1,68 @@
 # Chamelion
 
-**어디서든 동작하는 적응형 AI 에이전트 프레임워크**
+**프레임워크에 맞추지 않는다. 프레임워크가 맞춘다.**
 
-Chameleon + AI + Lion -- 인프라가 당신에게 맞춰야 한다는 원칙 위에 만든
+Chameleon + AI + Lion — 어디서든, 어떤 모델이든, 당신의 방식대로 동작하는
 AI 에이전트 프레임워크.
 
 ---
 
-## 철학: 종속을 거부한다
+## 왜 Chamelion인가
 
-### 벤더 종속 없음
+### 소형 모델도 실패하지 않는 Tool Calling
+
+모든 도구 파라미터가 primitive type (string, number, boolean)이다.
+LLM에게 복잡한 객체나 배열 생성을 요구하지 않는다.
+30B급 로컬 모델도 안정적으로 도구를 호출할 수 있다.
+
+```json
+{ "path": "src/main.ts" }
+{ "command": "npm test" }
+{ "task": "버그를 찾아서 수정해줘" }
+```
+
+### 프레임워크가 아닌 라이브러리
+
+LangChain처럼 추상화 위에 추상화를 쌓지 않는다.
+LLM에게 전달되는 messages, tools, system prompt를 개발자가 직접 보고 제어한다.
+블랙박스가 없으므로 디버깅이 쉽고, 원하는 부분만 골라 쓸 수 있다.
+
+### 멀티턴 에이전트 루프 — 단순하고 투명한
+
+```
+while (iterations < max) {
+  response = LLM.chat(messages, tools)
+  if (no tool calls) → 완료
+  execute tools → 결과를 messages에 추가 → 반복
+}
+```
+
+별도의 planner, state machine, ReAct 파서가 없다.
+컨텍스트 윈도우 자체가 작업 기억이고, LLM이 스스로 다음 행동을 판단한다.
+
+---
+
+## 어디에도 묶이지 않는다
+
+### 벤더
 
 **모든** LLM 백엔드와 동작한다. Claude, OpenAI, vLLM, Ollama, 또는 어떤
 OpenAI 호환 서버든. 런타임에 슬래시 커맨드 하나로 프로바이더를 전환할 수 있다
--- 코드 변경도, 재배포도 필요 없다.
+— 코드 변경도, 재배포도 필요 없다.
 
-### 환경 종속 없음
+### 환경
 
 **CLI**, **Electron 데스크톱 앱**, **Kubernetes** 안에서 실행된다.
 코드 실행은 Docker 샌드박스에서 격리된다. 같은 코드베이스, 같은 패키지,
 어떤 환경이든.
 
-### 도구 종속 없음
+### 도구
 
 내장 도구(file, shell)는 시작 시 등록되고, **MCP 외부 도구**는 런타임에
 동적으로 연결/해제된다. stdio와 SSE 트랜스포트 모두 지원.
 재시작 없이 MCP 서버를 추가하면 도구가 자동으로 발견되어 등록된다.
 
-### 거버넌스 종속 없음
+### 거버넌스
 
 `IPolicyProvider` 패턴으로 정책과 로직을 분리한다:
 
@@ -36,8 +71,8 @@ OpenAI 호환 서버든. 런타임에 슬래시 커맨드 하나로 프로바이
 | **Standalone** | 없음 (OpenPolicy) | 모든 도구 허용 | 없음 |
 | **Governed** | 관리자 할당 | 프로필 기반 필터링 | 프로필 정책에 따라 |
 
-- **Standalone** -- 개인 개발자용. 제로 설정, DB 불필요. 몇 분 만에 배포.
-- **Governed** -- 팀/조직용. 프로필로 도구 접근 제어, 엔터프라이즈 RBAC,
+- **Standalone** — 개인 개발자용. 제로 설정, DB 불필요. 몇 분 만에 배포.
+- **Governed** — 팀/조직용. 프로필로 도구 접근 제어, 엔터프라이즈 RBAC,
   멀티 DB (PostgreSQL, MySQL/MariaDB, MongoDB), 감사 추적, 승인 워크플로우.
 
 거버넌스 요구사항이 바뀌어도 에이전트 코드는 바뀌지 않는다.
