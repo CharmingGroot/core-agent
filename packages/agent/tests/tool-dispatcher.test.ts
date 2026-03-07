@@ -90,6 +90,8 @@ describe('ToolDispatcher', () => {
     };
 
     await expect(d.dispatch(toolCall, context)).rejects.toThrow(PermissionDeniedError);
+    // Handler should receive parsed params
+    expect(handler).toHaveBeenCalledWith('shell_exec', { command: 'ls' });
   });
 
   it('should dispatch all tool calls', async () => {

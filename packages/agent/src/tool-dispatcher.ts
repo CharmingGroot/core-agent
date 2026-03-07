@@ -36,14 +36,6 @@ export class ToolDispatcher {
       };
     }
 
-    const permitted = await this.permissionManager.checkPermission(tool);
-    if (!permitted) {
-      this.logger.info({ toolName: toolCall.name }, 'Permission denied');
-      throw new PermissionDeniedError(toolCall.name);
-    }
-
-    context.eventBus.emit('tool:start', { runId: context.runId, toolCall });
-
     let params: JsonObject;
     try {
       params = JSON.parse(toolCall.arguments) as JsonObject;
@@ -58,6 +50,14 @@ export class ToolDispatcher {
         error: `Invalid tool arguments for "${toolCall.name}": ${toolCall.arguments.slice(0, 100)}`,
       };
     }
+
+    const permitted = await this.permissionManager.checkPermission(tool, params);
+    if (!permitted) {
+      this.logger.info({ toolName: toolCall.name }, 'Permission denied');
+      throw new PermissionDeniedError(toolCall.name);
+    }
+
+    context.eventBus.emit('tool:start', { runId: context.runId, toolCall });
 
     let result: ToolResult;
     try {

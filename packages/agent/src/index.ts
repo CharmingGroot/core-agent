@@ -3,7 +3,12 @@ export type { AgentLoopOptions, AgentResult, SystemPromptBuilder } from './agent
 export { MessageManager } from './message-manager.js';
 export { ToolDispatcher } from './tool-dispatcher.js';
 export { PermissionManager } from './permission.js';
-export type { PermissionHandler } from './permission.js';
+export type {
+  PermissionHandler,
+  PermissionDecision,
+  ApprovalLevel,
+  PersistApprovalCallback,
+} from './permission.js';
 export { SubAgentTool } from './sub-agent-tool.js';
 export type { SubAgentToolConfig } from './sub-agent-tool.js';
 export { SkillTool } from './skill-tool.js';

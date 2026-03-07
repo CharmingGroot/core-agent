@@ -7,3 +7,5 @@ export { InMemoryOperationTracker } from './operation-tracker.js';
 export type { OperationTrackerEvents } from './operation-tracker.js';
 export { createContextAwareBuilder, messageToContextMessage } from './context-integration.js';
 export type { ContextAwareBuilderConfig, ContextAssembledEvent } from './context-integration.js';
+export { createPermissionHandler } from './permission-factory.js';
+export type { PermissionFactoryConfig } from './permission-factory.js';

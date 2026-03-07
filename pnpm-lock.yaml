@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@20.19.37)(jsdom@24.1.3)
 
   core-packages/context-engine:
     dependencies:
