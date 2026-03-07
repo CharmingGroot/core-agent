@@ -122,8 +122,11 @@ export class CliRenderer {
         this.totalInputTokens += response.usage.inputTokens;
         this.totalOutputTokens += response.usage.outputTokens;
 
+        const thinkInfo = response.usage.thinkingMs
+          ? chalk.dim(` · thought for ${formatDuration(response.usage.thinkingMs)}`)
+          : '';
         const tokenInfo = chalk.dim(
-          `(↓ ${response.usage.inputTokens} ↑ ${response.usage.outputTokens} tokens)`
+          `(↓ ${response.usage.inputTokens} ↑ ${response.usage.outputTokens} tokens${thinkInfo})`
         );
 
         if (this.streamedChunks > 0) {

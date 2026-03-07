@@ -32,6 +32,8 @@ export interface LlmResponse {
 export interface TokenUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
+  /** Time spent in extended thinking / <think> block (ms). Only set by providers that support it. */
+  readonly thinkingMs?: number;
 }
 
 export interface StreamEvent {

@@ -10,6 +10,7 @@ import type {
 import { ProviderError } from '@cli-agent/core';
 import { BaseProvider } from './base-provider.js';
 import { extractToken } from './auth/auth-resolver.js';
+import { extractThinkTag, estimateThinkingMs } from './thinking-parser.js';
 
 interface AnthropicToolParam {
   name: string;
@@ -165,9 +166,15 @@ export class ClaudeProvider extends BaseProvider {
   private parseResponse(response: Anthropic.Message): LlmResponse {
     let content = '';
     const toolCalls: ToolCall[] = [];
+    let thinkingMs: number | undefined;
 
     for (const block of response.content) {
-      if (block.type === 'text') {
+      if (block.type === 'thinking') {
+        // Anthropic extended thinking block — estimate duration from token count
+        // (no direct timing from API, but the block existing means thinking occurred)
+        const thinkingBlock = block as { type: 'thinking'; thinking: string };
+        thinkingMs = estimateThinkingMs(thinkingBlock.thinking);
+      } else if (block.type === 'text') {
         content += block.text;
       } else if (block.type === 'tool_use') {
         toolCalls.push({
@@ -175,6 +182,15 @@ export class ClaudeProvider extends BaseProvider {
           name: block.name,
           arguments: JSON.stringify(block.input),
         });
+      }
+    }
+
+    // Fallback: parse <think>...</think> tags from text content (DeepSeek, etc.)
+    const parsed = extractThinkTag(content);
+    if (parsed.thinkContent) {
+      content = parsed.cleanContent;
+      if (!thinkingMs) {
+        thinkingMs = estimateThinkingMs(parsed.thinkContent);
       }
     }
 
@@ -192,6 +208,7 @@ export class ClaudeProvider extends BaseProvider {
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
+        thinkingMs,
       },
     };
   }

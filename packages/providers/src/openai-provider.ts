@@ -10,6 +10,7 @@ import type {
 import { ProviderError } from '@cli-agent/core';
 import { BaseProvider } from './base-provider.js';
 import { extractToken } from './auth/auth-resolver.js';
+import { extractThinkTag, estimateThinkingMs } from './thinking-parser.js';
 
 export class OpenAIProvider extends BaseProvider {
   readonly providerId = 'openai';
@@ -215,13 +216,23 @@ export class OpenAIProvider extends BaseProvider {
           ? 'max_tokens' as const
           : 'end_turn' as const;
 
+    let content = choice.message.content ?? '';
+    let thinkingMs: number | undefined;
+
+    const parsed = extractThinkTag(content);
+    if (parsed.thinkContent) {
+      content = parsed.cleanContent;
+      thinkingMs = estimateThinkingMs(parsed.thinkContent);
+    }
+
     return {
-      content: choice.message.content ?? '',
+      content,
       stopReason,
       toolCalls,
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,
+        thinkingMs,
       },
     };
   }

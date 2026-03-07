@@ -15,6 +15,7 @@ export interface SpinnerMetrics {
   inputTokens?: number;
   outputTokens?: number;
   streamChunks?: number;
+  thinkingMs?: number;
 }
 
 function formatTokens(n: number): string {
@@ -70,6 +71,7 @@ export class StatusSpinner {
     if (metrics.inputTokens !== undefined) this.metrics.inputTokens = metrics.inputTokens;
     if (metrics.outputTokens !== undefined) this.metrics.outputTokens = metrics.outputTokens;
     if (metrics.streamChunks !== undefined) this.metrics.streamChunks = metrics.streamChunks;
+    if (metrics.thinkingMs !== undefined) this.metrics.thinkingMs = metrics.thinkingMs;
   }
 
   /** Stop the spinner and optionally print a final message */
@@ -109,6 +111,9 @@ export class StatusSpinner {
     }
     if (this.metrics.inputTokens || this.metrics.outputTokens) {
       parts.push('tokens');
+    }
+    if (this.metrics.thinkingMs) {
+      parts.push(`thought for ${formatElapsed(this.metrics.thinkingMs)}`);
     }
     if (this.metrics.streamChunks) {
       parts.push(`${this.metrics.streamChunks} chunks`);
