@@ -8,3 +8,5 @@ export { SubAgentTool } from './sub-agent-tool.js';
 export type { SubAgentToolConfig } from './sub-agent-tool.js';
 export { SkillTool } from './skill-tool.js';
 export type { SkillEntry, SkillProvider } from './skill-tool.js';
+export { SessionManager } from './session-manager.js';
+export type { SessionMeta } from './session-manager.js';

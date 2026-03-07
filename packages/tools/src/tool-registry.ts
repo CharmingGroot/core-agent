@@ -7,6 +7,9 @@ import { ShellExecTool } from './shell-exec.js';
 import { ReflectTool } from './reflect.js';
 import { FileEditTool } from './file-edit.js';
 import { ContentSearchTool } from './content-search.js';
+import { GitStatusTool } from './git-status.js';
+import { GitDiffTool } from './git-diff.js';
+import { GitLogTool } from './git-log.js';
 
 export function createToolRegistry(): Registry<ITool> {
   const registry = new Registry<ITool>('Tool');
@@ -26,4 +29,23 @@ export function createToolRegistry(): Registry<ITool> {
   }
 
   return registry;
+}
+
+/**
+ * Register Git tools (git_status, git_diff, git_log) into an existing registry.
+ * These are opt-in — not included in createToolRegistry() by default.
+ *
+ * Usage:
+ *   const registry = createToolRegistry();
+ *   registerGitTools(registry);
+ */
+export function registerGitTools(registry: Registry<ITool>): void {
+  const gitTools: ITool[] = [
+    new GitStatusTool(),
+    new GitDiffTool(),
+    new GitLogTool(),
+  ];
+  for (const tool of gitTools) {
+    registry.register(tool.name, tool);
+  }
 }

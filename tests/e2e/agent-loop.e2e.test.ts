@@ -223,7 +223,7 @@ describe('E2E: Tool execution', () => {
 
     const agent = new AgentLoop(options);
     const result = await agent.run(
-      'Search for files named "vitest.config.ts" in the packages directory, then read one of them and tell me what test framework it uses.'
+      'Search for files matching "**/vitest.config.ts" under the packages directory, then read one of them and tell me what test framework it uses.'
     );
 
     // The agent should have used at least file_search and file_read
