@@ -93,7 +93,7 @@ describe('MessageManager', () => {
 
   it('should compress when over budget', () => {
     // Use a manager with very low token limit to force compression
-    const small = new MessageManager(50);
+    const small = new MessageManager({ maxHistoryTokens: 50, keepRecentMessages: 2 });
     small.addSystemMessage('system');
     // Add many messages to exceed 50 tokens
     for (let i = 0; i < 20; i++) {
@@ -108,11 +108,11 @@ describe('MessageManager', () => {
     const msgs = small.getMessages();
     expect(msgs[0]?.role).toBe('system');
     // Summary message present
-    expect(msgs[1]?.content).toContain('Conversation summary');
+    expect(msgs[1]?.content).toContain('Context summary');
   });
 
   it('should preserve system messages during compression', () => {
-    const small = new MessageManager(30);
+    const small = new MessageManager({ maxHistoryTokens: 30, keepRecentMessages: 2 });
     small.addSystemMessage('You are helpful.');
     for (let i = 0; i < 15; i++) {
       small.addUserMessage(`msg ${i} ${'x'.repeat(50)}`);

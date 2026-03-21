@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { ProviderConfig, ILlmProvider, Message, LlmResponse, StreamEvent, ToolDescription } from '@cli-agent/core';
 import { ProviderError } from '@cli-agent/core';
 import { createProvider, registerProvider, getProviderRegistry } from '../src/provider-factory.js';
-import { RetryProvider } from '../src/retry-provider.js';
+import { CircuitBreakerProvider } from '../src/circuit-breaker.js';
 
 const CLAUDE_CONFIG: ProviderConfig = {
   providerId: 'claude',
@@ -23,13 +23,13 @@ const OPENAI_CONFIG: ProviderConfig = {
 describe('ProviderFactory', () => {
   it('should create a Claude provider', () => {
     const provider = createProvider(CLAUDE_CONFIG);
-    expect(provider).toBeInstanceOf(RetryProvider);
+    expect(provider).toBeInstanceOf(CircuitBreakerProvider);
     expect(provider.providerId).toBe('claude');
   });
 
   it('should create an OpenAI provider', () => {
     const provider = createProvider(OPENAI_CONFIG);
-    expect(provider).toBeInstanceOf(RetryProvider);
+    expect(provider).toBeInstanceOf(CircuitBreakerProvider);
     expect(provider.providerId).toBe('openai');
   });
 
