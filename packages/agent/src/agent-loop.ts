@@ -84,7 +84,12 @@ export class AgentLoop {
 
   async run(userMessage: string): Promise<AgentResult> {
     this.messageManager.addUserMessage(userMessage);
-    this.context.eventBus.emit('agent:start', { runId: this.context.runId });
+    const agentStartedAt = Date.now();
+    this.context.eventBus.emit('agent:start', {
+      runId: this.context.runId,
+      model: this.context.config.provider.model,
+      startedAt: agentStartedAt,
+    });
     this.iterations = 0;
 
     try {
@@ -117,6 +122,7 @@ export class AgentLoop {
           messages,
         });
 
+        const llmStartedAt = Date.now();
         const response = this.streaming
           ? await this.streamResponse(messages, toolDescriptions)
           : await this.provider.chat(messages, toolDescriptions);
@@ -124,6 +130,8 @@ export class AgentLoop {
         this.context.eventBus.emit('llm:response', {
           runId: this.context.runId,
           response,
+          durationMs: Date.now() - llmStartedAt,
+          model: this.context.config.provider.model,
         });
 
         lastContent = response.content;
@@ -146,6 +154,8 @@ export class AgentLoop {
       this.context.eventBus.emit('agent:end', {
         runId: this.context.runId,
         reason: aborted ? 'aborted' : 'complete',
+        durationMs: Date.now() - agentStartedAt,
+        iterations: this.iterations,
       });
 
       return {

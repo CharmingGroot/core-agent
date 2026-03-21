@@ -57,7 +57,8 @@ export class ToolDispatcher {
       throw new PermissionDeniedError(toolCall.name);
     }
 
-    context.eventBus.emit('tool:start', { runId: context.runId, toolCall });
+    const toolStartedAt = Date.now();
+    context.eventBus.emit('tool:start', { runId: context.runId, toolCall, startedAt: toolStartedAt });
 
     let result: ToolResult;
     try {
@@ -69,7 +70,12 @@ export class ToolDispatcher {
     }
 
     const truncated = this.truncateResult(result);
-    context.eventBus.emit('tool:end', { runId: context.runId, toolCall, result: truncated });
+    context.eventBus.emit('tool:end', {
+      runId: context.runId,
+      toolCall,
+      result: truncated,
+      durationMs: Date.now() - toolStartedAt,
+    });
     return truncated;
   }
 

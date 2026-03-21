@@ -3,14 +3,14 @@ import type { ToolResult } from './tool.js';
 import type { ExecutionResult } from './sandbox.js';
 
 export interface AgentEvents {
-  'agent:start': { runId: string };
-  'agent:end': { runId: string; reason: string };
+  'agent:start': { runId: string; model: string; startedAt: number };
+  'agent:end': { runId: string; reason: string; durationMs: number; iterations: number };
   'agent:error': { runId: string; error: Error };
   'llm:request': { runId: string; messages: readonly Message[] };
-  'llm:response': { runId: string; response: LlmResponse };
+  'llm:response': { runId: string; response: LlmResponse; durationMs: number; model: string };
   'llm:stream': { runId: string; chunk: string };
-  'tool:start': { runId: string; toolCall: ToolCall };
-  'tool:end': { runId: string; toolCall: ToolCall; result: ToolResult };
+  'tool:start': { runId: string; toolCall: ToolCall; startedAt: number };
+  'tool:end': { runId: string; toolCall: ToolCall; result: ToolResult; durationMs: number };
   'tool:permission': { runId: string; toolName: string };
   'sandbox:execute': { runId: string; language: string };
   'sandbox:result': { runId: string; result: ExecutionResult };
