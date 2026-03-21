@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - SOUL.md (페르소나 시스템)
+# AgentCore - SOUL.md (페르소나 시스템)
 
 프로젝트 루트에 `SOUL.md` 파일을 두면 에이전트의 페르소나, 톤, 행동 규칙을 정의할 수 있습니다.
 Open Claw의 SOUL.md 컨셉에서 영감을 받았습니다.

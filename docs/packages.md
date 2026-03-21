@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 패키지 상세
+# AgentCore - 패키지 상세
 
 ---
 

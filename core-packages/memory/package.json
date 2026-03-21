@@ -1,13 +1,14 @@
 {
-  "name": "agentcore-sdk",
-  "version": "0.1.0",
-  "description": "AgentCore Agent Framework — TypeScript SDK",
+  "name": "@core/memory",
+  "version": "0.0.1",
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
       "import": "./dist/index.js"
     }
   },
@@ -17,9 +18,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@cli-agent/core": "workspace:*",
-    "@cli-agent/agent": "workspace:*",
-    "@cli-agent/providers": "workspace:*"
+    "@core/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 커스텀 LLM 엔드포인트 (vLLM, Ollama 등)
+# AgentCore - 커스텀 LLM 엔드포인트 (vLLM, Ollama 등)
 
 이 에이전트는 **OpenAI-compatible API를 제공하는 모든 LLM 서버**와 연동됩니다.
 vLLM, Ollama, LocalAI, LMStudio, TGI 등 자체 호스팅 LLM을 사용하는 엔지니어를 위한 핵심 기능입니다.

@@ -1,15 +1,15 @@
-# Chameleon SDK
+# AgentCore SDK
 
-Chameleon Agent Framework SDK — available in TypeScript and Python.
+AgentCore Agent Framework SDK — available in TypeScript and Python.
 
 ## TypeScript
 
 ```bash
-npm install chameleon-agent
+npm install agent-core-agent
 ```
 
 ```typescript
-import { AgentLoop, SubAgentTool, Registry, OpenAIProvider } from 'chameleon-agent';
+import { AgentLoop, SubAgentTool, Registry, OpenAIProvider } from 'agent-core-agent';
 ```
 
 See [typescript/](./typescript/) for details.
@@ -17,11 +17,11 @@ See [typescript/](./typescript/) for details.
 ## Python
 
 ```bash
-pip install chameleon-agent
+pip install agent-core-agent
 ```
 
 ```python
-from chameleon import AgentLoop, AgentLoopOptions, SubAgentTool, Registry, OpenAIProvider
+from agent-core import AgentLoop, AgentLoopOptions, SubAgentTool, Registry, OpenAIProvider
 ```
 
 See [python/](./python/) for details.

@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 이벤트 시스템
+# AgentCore - 이벤트 시스템
 
 `EventBus`가 에이전트 실행 전 과정을 이벤트로 broadcast합니다. CLI 렌더러, Electron UI 모두 이 이벤트를 구독하여 화면을 구성합니다.
 

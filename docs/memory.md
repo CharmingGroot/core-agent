@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 메모리 시스템
+# AgentCore - 메모리 시스템
 
 에이전트는 세션 간 지속되는 메모리를 지원합니다.
 프로젝트 디렉토리의 `.cli-agent/MEMORY.md`에 마크다운 형태로 저장됩니다.

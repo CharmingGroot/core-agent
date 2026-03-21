@@ -1,10 +1,10 @@
 /**
- * Chameleon Agent Framework — TypeScript SDK.
+ * AgentCore Agent Framework — TypeScript SDK.
  *
  * Re-exports from internal packages for a single public entry point.
  *
  * Usage:
- *   import { AgentLoop, SubAgentTool, Registry, OpenAIProvider } from 'chameleon-agent';
+ *   import { AgentLoop, SubAgentTool, Registry, OpenAIProvider } from 'agentcore-sdk';
  */
 
 // Core

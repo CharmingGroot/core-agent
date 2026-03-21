@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - CLI 렌더링 UX
+# AgentCore - CLI 렌더링 UX
 
 Claude Code와 유사한 리치 터미널 UX를 제공합니다.
 

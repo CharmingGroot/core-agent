@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 설치 및 실행
+# AgentCore - 설치 및 실행
 
 ---
 

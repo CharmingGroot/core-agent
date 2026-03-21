@@ -1,13 +1,13 @@
-# Chamelion
+# AgentCore
 
-**프레임워크에 맞추지 않는다. 프레임워크가 맞춘다.**
+**TypeScript AI 에이전트 프레임워크 — 어디서든, 어떤 모델이든, 당신의 방식대로.**
 
-Chameleon + AI + Lion — 어디서든, 어떤 모델이든, 당신의 방식대로 동작하는
-AI 에이전트 프레임워크.
+멀티 LLM 지원, MCP 도구 통합, 거버넌스, 컨텍스트 엔진을 모듈로 조합하는
+경량 AI 에이전트 프레임워크.
 
 ---
 
-## 왜 Chamelion인가
+## 왜 AgentCore를 만들었나
 
 ### 소형 모델도 실패하지 않는 Tool Calling
 
@@ -554,7 +554,7 @@ import { HarnessBuilder } from '@core/harness';
 
 // DB 연결
 const store = new PostgresGovernanceStore({
-  host: 'localhost', port: 5432, database: 'chamelion',
+  host: 'localhost', port: 5432, database: 'agentcore',
   user: 'admin', password: process.env.DB_PASSWORD,
 });
 
@@ -627,21 +627,21 @@ console.log(result.exitCode); // 0
 
 ## Helm / Kubernetes
 
-`helm/chamelion/`에 전체 Helm 차트가 제공된다. 에이전트,
+`helm/agentcore/`에 전체 Helm 차트가 제공된다. 에이전트,
 오케스트레이터, 거버넌스 서비스, 데이터베이스를 완전한 스택으로 배포한다.
 
 ```bash
-helm install chamelion ./helm/chamelion -f values.yaml
+helm install agentcore ./helm/agentcore -f values.yaml
 ```
 
-모든 설정 옵션은 `helm/chamelion/values.yaml` 참고.
+모든 설정 옵션은 `helm/agentcore/values.yaml` 참고.
 
 ---
 
 ## 프로젝트 구조
 
 ```
-chamelion/
+agentcore/
 ├── packages/                # Layer 1: @cli-agent/*
 │   ├── core/                #   타입, Registry, EventBus, Config
 │   ├── providers/           #   LLM 프로바이더 (Claude, OpenAI, vLLM, ...)
@@ -661,7 +661,7 @@ chamelion/
 │   └── harness/             #   도메인 조합 하네스
 │
 ├── skills/                  # 내장 스킬 가이드라인 (.skill.md)
-├── helm/chamelion/          # Kubernetes Helm 차트
+├── helm/agentcore/          # Kubernetes Helm 차트
 ├── docs/                    # 문서
 ├── package.json             # 루트 (pnpm 워크스페이스)
 ├── pnpm-workspace.yaml

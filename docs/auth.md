@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 인증 (Auth) 시스템
+# AgentCore - 인증 (Auth) 시스템
 
 API 키 외에 다양한 인증 방식을 지원합니다. `ProviderConfig.auth` 필드에 discriminated union으로 설정합니다.
 

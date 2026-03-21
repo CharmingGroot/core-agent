@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 아키텍처
+# AgentCore - 아키텍처
 
 ---
 

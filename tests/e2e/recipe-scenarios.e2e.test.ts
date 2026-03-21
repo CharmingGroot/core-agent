@@ -168,10 +168,10 @@ describe('Recipe 3: Custom tool', () => {
       workingDirectory: process.cwd(),
     };
     const context = new RunContext(config);
-    const result = await tool.execute({ name: 'Chamelion' }, context);
+    const result = await tool.execute({ name: 'AgentCore' }, context);
 
     expect(result.success).toBe(true);
-    expect(result.output).toBe('Hello, Chamelion!');
+    expect(result.output).toBe('Hello, AgentCore!');
   });
 });
 

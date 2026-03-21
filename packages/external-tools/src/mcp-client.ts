@@ -13,7 +13,7 @@ import { StdioTransport } from './stdio-transport.js';
 import { SseTransport } from './sse-transport.js';
 
 const PROTOCOL_VERSION = '2024-11-05';
-const CLIENT_NAME = 'chamelion';
+const CLIENT_NAME = 'agentcore';
 const CLIENT_VERSION = '0.0.1';
 
 /**

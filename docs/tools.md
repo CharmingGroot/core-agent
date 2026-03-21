@@ -1,6 +1,6 @@
 [< README](../README.md)
 
-# Chamelion - 도구 (Tools) 상세
+# AgentCore - 도구 (Tools) 상세
 
 Agent에 등록된 4개의 기본 도구입니다. LLM이 사용자 요청을 분석하여 적절한 도구를 선택합니다.
 

@@ -4,11 +4,11 @@ import { join, dirname } from 'node:path';
 import { createChildLogger } from '@cli-agent/core';
 import type { McpServerConfig } from './mcp-types.js';
 
-const CONFIG_DIR = join(homedir(), '.chamelion');
+const CONFIG_DIR = join(homedir(), '.agentcore');
 const CONFIG_FILE = join(CONFIG_DIR, 'mcp.json');
 
 /**
- * Persists MCP server configs to ~/.chamelion/mcp.json.
+ * Persists MCP server configs to ~/.agentcore/mcp.json.
  * Supports runtime add/remove without restart.
  */
 export class McpConfigStore {
