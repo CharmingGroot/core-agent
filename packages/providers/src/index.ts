@@ -7,6 +7,7 @@ export {
   getProviderRegistry,
 } from './provider-factory.js';
 export { RetryProvider, type RetryConfig } from './retry-provider.js';
+export { CircuitBreakerProvider, type CircuitBreakerConfig } from './circuit-breaker.js';
 export { resolveAuth, extractToken } from './auth/index.js';
 export { extractThinkTag, estimateThinkingMs } from './thinking-parser.js';
 export type { ThinkTagResult } from './thinking-parser.js';

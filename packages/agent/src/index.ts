@@ -1,6 +1,8 @@
 export { AgentLoop } from './agent-loop.js';
 export type { AgentLoopOptions, AgentResult, SystemPromptBuilder } from './agent-loop.js';
 export { MessageManager } from './message-manager.js';
+export type { CompressionConfig } from './message-manager.js';
+export { countTextTokens, countMessageTokens, countHistoryTokens } from './token-counter.js';
 export { ToolDispatcher } from './tool-dispatcher.js';
 export { PermissionManager } from './permission.js';
 export type {

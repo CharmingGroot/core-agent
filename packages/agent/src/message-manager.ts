@@ -1,39 +1,31 @@
 import type { Message, ToolCall, ToolResult } from '@cli-agent/core';
+import { countHistoryTokens } from './token-counter.js';
 
-const CHARS_PER_TOKEN = 4;
-const MESSAGE_OVERHEAD = 4;
-
-function estimateTokens(msg: Message): number {
-  let chars = msg.content.length;
-  if (msg.toolCalls) {
-    for (const tc of msg.toolCalls) {
-      chars += tc.name.length + tc.arguments.length;
-    }
-  }
-  if (msg.toolResults) {
-    for (const tr of msg.toolResults) {
-      chars += tr.content.length;
-    }
-  }
-  return Math.ceil(chars / CHARS_PER_TOKEN) + MESSAGE_OVERHEAD;
+export interface CompressionConfig {
+  /** Maximum tokens in history before compression triggers (default: 100_000) */
+  maxHistoryTokens?: number;
+  /** Number of recent non-system messages to keep intact (default: 10) */
+  keepRecentMessages?: number;
+  /** Truncate individual message content to this length in summary (default: 300) */
+  summaryContentLength?: number;
 }
 
 export class MessageManager {
   private readonly messages: Message[] = [];
   private readonly maxHistoryTokens: number;
+  private readonly keepRecentMessages: number;
+  private readonly summaryContentLength: number;
 
-  constructor(maxHistoryTokens = 100000) {
-    this.maxHistoryTokens = maxHistoryTokens;
+  constructor(config: CompressionConfig = {}) {
+    this.maxHistoryTokens     = config.maxHistoryTokens     ?? 100_000;
+    this.keepRecentMessages   = config.keepRecentMessages   ?? 10;
+    this.summaryContentLength = config.summaryContentLength ?? 300;
   }
 
   addSystemMessage(content: string): void {
     this.messages.push({ role: 'system', content });
   }
 
-  /**
-   * Replace the first system message, or insert one at position 0.
-   * Used by AgentLoop when a dynamic systemPromptBuilder is provided.
-   */
   setSystemMessage(content: string): void {
     const idx = this.messages.findIndex(m => m.role === 'system');
     if (idx >= 0) {
@@ -62,12 +54,7 @@ export class MessageManager {
         ? result.output
         : `Error: ${result.error ?? 'Unknown error'}`,
     }));
-
-    this.messages.push({
-      role: 'user',
-      content: '',
-      toolResults,
-    });
+    this.messages.push({ role: 'user', content: '', toolResults });
   }
 
   getMessages(): readonly Message[] {
@@ -82,16 +69,19 @@ export class MessageManager {
     return this.messages.length;
   }
 
+  /** Exact token count using js-tiktoken. */
+  get totalTokens(): number {
+    return countHistoryTokens(this.messages);
+  }
+
   clear(): void {
     this.messages.length = 0;
   }
 
-  /** Serialize all messages to a JSON string for persistence. */
   serialize(): string {
     return JSON.stringify(this.messages);
   }
 
-  /** Restore messages from a previously serialized JSON string. */
   restore(json: string): void {
     const parsed: unknown = JSON.parse(json);
     if (!Array.isArray(parsed)) {
@@ -112,54 +102,83 @@ export class MessageManager {
 
   /**
    * Compress history if it exceeds the token budget.
-   * Keeps: system messages, last 2 user messages, last 3 assistant+tool pairs.
-   * Summarizes older messages into a single system-level summary.
-   * Returns the number of messages compressed (0 if no compression needed).
+   *
+   * Strategy:
+   * 1. Always keep all system messages.
+   * 2. Keep the last `keepRecentMessages` non-system messages intact.
+   * 3. Summarize older messages into a structured digest that preserves:
+   *    - what the user asked
+   *    - what tools were called and whether they succeeded
+   *    - key assistant conclusions
+   *
+   * Returns the number of messages compressed (0 = no compression needed).
    */
   compressIfNeeded(): number {
-    const totalTokens = this.messages.reduce((sum, m) => sum + estimateTokens(m), 0);
-    if (totalTokens <= this.maxHistoryTokens) return 0;
+    if (this.totalTokens <= this.maxHistoryTokens) return 0;
 
     const system: Message[] = [];
-    const rest: Message[] = [];
+    const rest: Message[]   = [];
 
     for (const msg of this.messages) {
-      if (msg.role === 'system') {
-        system.push(msg);
-      } else {
-        rest.push(msg);
-      }
+      if (msg.role === 'system') system.push(msg);
+      else rest.push(msg);
     }
 
-    // Keep last 6 messages (roughly 3 user/assistant pairs)
-    const keepCount = Math.min(6, rest.length);
+    const keepCount   = Math.min(this.keepRecentMessages, rest.length);
     const toSummarize = rest.slice(0, rest.length - keepCount);
-    const toKeep = rest.slice(rest.length - keepCount);
+    const toKeep      = rest.slice(rest.length - keepCount);
 
     if (toSummarize.length === 0) return 0;
 
-    const summaryParts: string[] = [];
-    for (const msg of toSummarize) {
-      const prefix = msg.role === 'user' ? 'User' : 'Assistant';
-      const truncated = msg.content.length > 150
-        ? msg.content.slice(0, 150) + '...'
-        : msg.content;
-      if (truncated) {
-        summaryParts.push(`${prefix}: ${truncated}`);
-      }
-      if (msg.toolCalls) {
-        const names = msg.toolCalls.map(tc => tc.name).join(', ');
-        summaryParts.push(`  [tools: ${names}]`);
-      }
-    }
-
     const summaryMessage: Message = {
       role: 'user',
-      content: `[Conversation summary - ${toSummarize.length} messages compressed]\n${summaryParts.join('\n')}`,
+      content: this.buildDigest(toSummarize),
     };
 
     this.messages.length = 0;
     this.messages.push(...system, summaryMessage, ...toKeep);
     return toSummarize.length;
   }
+
+  private buildDigest(messages: Message[]): string {
+    const maxLen = this.summaryContentLength;
+    const lines: string[] = [
+      `[Context summary — ${messages.length} earlier messages compressed]`,
+      '',
+    ];
+
+    for (const msg of messages) {
+      if (msg.role === 'user' && !msg.toolResults) {
+        const text = truncate(msg.content, maxLen);
+        if (text) lines.push(`User: ${text}`);
+      }
+
+      if (msg.role === 'assistant') {
+        if (msg.content) {
+          lines.push(`Assistant: ${truncate(msg.content, maxLen)}`);
+        }
+        if (msg.toolCalls?.length) {
+          for (const tc of msg.toolCalls) {
+            lines.push(`  → ${tc.name}(${truncate(tc.arguments, 120)})`);
+          }
+        }
+      }
+
+      if (msg.toolResults?.length) {
+        for (const tr of msg.toolResults) {
+          lines.push(`  ← result: ${truncate(tr.content, 120)}`);
+        }
+      }
+    }
+
+    lines.push('', '[End of summary — conversation continues below]');
+    return lines.join('\n');
+  }
 }
+
+function truncate(text: string, maxLen: number): string {
+  if (!text) return '';
+  return text.length <= maxLen ? text : text.slice(0, maxLen) + '…';
+}
+
+export { countMessageTokens, countHistoryTokens } from './token-counter.js';

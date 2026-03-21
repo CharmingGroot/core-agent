@@ -3,6 +3,7 @@ import { Registry, ProviderError } from '@cli-agent/core';
 import { ClaudeProvider } from './claude-provider.js';
 import { OpenAIProvider } from './openai-provider.js';
 import { RetryProvider } from './retry-provider.js';
+import { CircuitBreakerProvider } from './circuit-breaker.js';
 
 type ProviderConstructor = new (config: ProviderConfig) => ILlmProvider;
 
@@ -14,6 +15,15 @@ providerRegistry.register('vllm', OpenAIProvider);
 providerRegistry.register('ollama', OpenAIProvider);
 providerRegistry.register('custom', OpenAIProvider);
 
+/**
+ * Creates a provider wrapped with RetryProvider → CircuitBreakerProvider.
+ *
+ * Request flow:
+ *   AgentLoop → CircuitBreakerProvider → RetryProvider → actual provider
+ *
+ * CircuitBreaker is outermost so it sees already-retried failures,
+ * preventing the circuit from tripping on transient single errors.
+ */
 export function createProvider(config: ProviderConfig): ILlmProvider {
   const Constructor = providerRegistry.tryGet(config.providerId);
   if (!Constructor) {
@@ -22,7 +32,8 @@ export function createProvider(config: ProviderConfig): ILlmProvider {
     );
   }
   const provider = new Constructor(config);
-  return new RetryProvider(provider);
+  const withRetry = new RetryProvider(provider);
+  return new CircuitBreakerProvider(withRetry);
 }
 
 export function registerProvider(

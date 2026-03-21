@@ -18,11 +18,12 @@
   },
   "dependencies": {
     "@cli-agent/core": "workspace:*",
-    "@cli-agent/providers": "workspace:*"
+    "@cli-agent/providers": "workspace:*",
+    "js-tiktoken": "^1.0.21"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0",
-    "@types/node": "^20.11.0"
+    "vitest": "^1.6.0"
   }
 }
